@@ -4,10 +4,23 @@ public class Main {
 
     public static void main(String[] args) {
 
+        // ========================================
+        // SERVIDOR LOCAL DE SINAIS
+        // ========================================
+
         SignalHttpServer.iniciar();
 
-        // Abre automaticamente o receptor
+
+        // ========================================
+        // JANELA RECEPTORA DE SINAIS
+        // ========================================
+
         SignalReceiverWindow.abrir();
+
+
+        // ========================================
+        // INÍCIO DO ANALISADOR
+        // ========================================
 
         System.out.println(
                 "========================================"
@@ -29,10 +42,30 @@ public class Main {
 
         System.out.println();
 
+        System.out.println(
+                "Selenium aguardando sinal real do analisador."
+        );
+
+        System.out.println(
+                "O botão correspondente será apenas destacado."
+        );
+
+        System.out.println();
+
+
+        // ========================================
+        // INICIA O FEED DE DADOS REAIS
+        // ========================================
+
         RealTimeFeed feed =
                 new RealTimeFeed();
 
         feed.iniciar();
+
+
+        // ========================================
+        // MANTÉM O PROGRAMA EXECUTANDO
+        // ========================================
 
         try {
 

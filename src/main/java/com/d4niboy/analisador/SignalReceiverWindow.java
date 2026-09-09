@@ -8,6 +8,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -34,28 +35,57 @@ public class SignalReceiverWindow extends JFrame {
     private final JLabel horarioLabel =
             new JLabel("Último sinal: ---", SwingConstants.CENTER);
 
+    private final JButton confirmarButton =
+            new JButton("CONFIRMAR");
+
+    private final JButton ignorarButton =
+            new JButton("IGNORAR");
+
     private volatile long ultimoTimestamp = -1;
+    private volatile String ativoAtual = null;
+    private volatile String direcaoAtual = null;
+    private volatile double confiancaAtual = 0;
+    private volatile double payoutAtual = 0;
+    private volatile long timestampAtual = -1;
+
+    /*
+     * Usado somente depois que o usuário aperta CONFIRMAR.
+     * Não executa clique na plataforma.
+     */
+    private final PlatformButtonLocator locator =
+            new PlatformButtonLocator();
 
     public SignalReceiverWindow() {
 
         super("Analisador15s - Receptor de Sinais");
 
         configurarJanela();
+
+        /*
+         * Ao iniciar, tenta limpar qualquer destaque antigo.
+         * Nenhum botão é destacado automaticamente.
+         */
+        try {
+            locator.conectar();
+            locator.removerDestaques();
+        } catch (Exception e) {
+            System.out.println(
+                    "⚠ Não foi possível limpar destaque anterior: "
+                            + e.getMessage()
+            );
+        }
+
         iniciarMonitoramento();
     }
 
     private void configurarJanela() {
 
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-
-        setSize(430, 390);
-
+        setSize(500, 460);
         setLocationRelativeTo(null);
-
         setAlwaysOnTop(true);
 
         JPanel painel = new JPanel();
-
         painel.setLayout(
                 new BoxLayout(
                         painel,
@@ -86,9 +116,7 @@ public class SignalReceiverWindow extends JFrame {
                 )
         );
 
-        titulo.setAlignmentX(
-                Component.CENTER_ALIGNMENT
-        );
+        titulo.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         statusLabel.setFont(
                 new Font(
@@ -97,10 +125,7 @@ public class SignalReceiverWindow extends JFrame {
                         16
                 )
         );
-
-        statusLabel.setAlignmentX(
-                Component.CENTER_ALIGNMENT
-        );
+        statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         ativoLabel.setFont(
                 new Font(
@@ -109,10 +134,7 @@ public class SignalReceiverWindow extends JFrame {
                         30
                 )
         );
-
-        ativoLabel.setAlignmentX(
-                Component.CENTER_ALIGNMENT
-        );
+        ativoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         direcaoLabel.setFont(
                 new Font(
@@ -121,10 +143,7 @@ public class SignalReceiverWindow extends JFrame {
                         27
                 )
         );
-
-        direcaoLabel.setAlignmentX(
-                Component.CENTER_ALIGNMENT
-        );
+        direcaoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         confiancaLabel.setFont(
                 new Font(
@@ -133,10 +152,7 @@ public class SignalReceiverWindow extends JFrame {
                         18
                 )
         );
-
-        confiancaLabel.setAlignmentX(
-                Component.CENTER_ALIGNMENT
-        );
+        confiancaLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         payoutLabel.setFont(
                 new Font(
@@ -145,56 +161,187 @@ public class SignalReceiverWindow extends JFrame {
                         18
                 )
         );
+        payoutLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        payoutLabel.setAlignmentX(
-                Component.CENTER_ALIGNMENT
+        horarioLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        confirmarButton.setFont(
+                new Font(
+                        Font.SANS_SERIF,
+                        Font.BOLD,
+                        15
+                )
+        );
+        confirmarButton.setEnabled(false);
+        confirmarButton.addActionListener(
+                e -> confirmarSinal()
         );
 
-        horarioLabel.setAlignmentX(
-                Component.CENTER_ALIGNMENT
+        ignorarButton.setFont(
+                new Font(
+                        Font.SANS_SERIF,
+                        Font.BOLD,
+                        15
+                )
+        );
+        ignorarButton.setEnabled(false);
+        ignorarButton.addActionListener(
+                e -> ignorarSinal()
         );
 
-        JButton ignorar =
-                new JButton("IGNORAR");
+        JPanel painelBotoes =
+                new JPanel(
+                        new FlowLayout(
+                                FlowLayout.CENTER,
+                                15,
+                                0
+                        )
+                );
 
-        ignorar.setAlignmentX(
-                Component.CENTER_ALIGNMENT
-        );
-
-        ignorar.addActionListener(
-                e -> {
-                    statusLabel.setText(
-                            "Aguardando próximo sinal..."
-                    );
-
-                    direcaoLabel.setText("---");
-                }
-        );
+        painelBotoes.add(confirmarButton);
+        painelBotoes.add(ignorarButton);
 
         painel.add(titulo);
         painel.add(Box.createVerticalStrut(20));
-
         painel.add(statusLabel);
         painel.add(Box.createVerticalStrut(20));
-
         painel.add(ativoLabel);
         painel.add(Box.createVerticalStrut(10));
-
         painel.add(direcaoLabel);
         painel.add(Box.createVerticalStrut(15));
-
         painel.add(confiancaLabel);
         painel.add(Box.createVerticalStrut(5));
-
         painel.add(payoutLabel);
         painel.add(Box.createVerticalStrut(10));
-
         painel.add(horarioLabel);
-        painel.add(Box.createVerticalStrut(20));
-
-        painel.add(ignorar);
+        painel.add(Box.createVerticalStrut(25));
+        painel.add(painelBotoes);
 
         setContentPane(painel);
+    }
+
+    private void confirmarSinal() {
+
+        if (
+                direcaoAtual == null
+                        || direcaoAtual.isBlank()
+                        || timestampAtual <= 0
+        ) {
+            return;
+        }
+
+        statusLabel.setText(
+                "✓ CONFIRMADO - FINALIZE NO NAVEGADOR"
+        );
+
+        confirmarButton.setEnabled(false);
+        ignorarButton.setEnabled(false);
+
+        /*
+         * SOMENTE aqui o botão correto é destacado.
+         * Nenhum clique é executado.
+         */
+        try {
+
+            locator.removerDestaques();
+
+            boolean encontrado =
+                    locator.destacarBotao(
+                            direcaoAtual
+                    );
+
+            if (!encontrado) {
+                statusLabel.setText(
+                        "⚠ CONFIRMADO - BOTÃO NÃO LOCALIZADO"
+                );
+            }
+
+        } catch (Exception e) {
+
+            System.out.println(
+                    "⚠ Não foi possível destacar o botão: "
+                            + e.getMessage()
+            );
+        }
+
+        trazerChromeParaFrente();
+
+        System.out.println();
+        System.out.println("========================================");
+        System.out.println("SINAL CONFIRMADO MANUALMENTE");
+        System.out.println("Ativo: " + ativoAtual);
+        System.out.println("Direção: " + direcaoAtual);
+        System.out.printf(
+                Locale.US,
+                "Confiança: %.2f%%%n",
+                confiancaAtual
+        );
+        System.out.printf(
+                Locale.US,
+                "Payout: %.0f%%%n",
+                payoutAtual
+        );
+        System.out.println(
+                "O botão correto foi apenas destacado."
+        );
+        System.out.println(
+                "O clique final continua manual."
+        );
+        System.out.println("========================================");
+        System.out.println();
+    }
+
+    private void trazerChromeParaFrente() {
+
+        try {
+
+            String comando =
+                    "$wshell = New-Object -ComObject WScript.Shell; " +
+                            "$p = Get-Process chrome -ErrorAction SilentlyContinue " +
+                            "| Where-Object {$_.MainWindowTitle -ne ''} " +
+                            "| Select-Object -First 1; " +
+                            "if ($p) { " +
+                            "$wshell.AppActivate($p.Id) | Out-Null " +
+                            "}";
+
+            new ProcessBuilder(
+                    "powershell.exe",
+                    "-NoProfile",
+                    "-WindowStyle",
+                    "Hidden",
+                    "-Command",
+                    comando
+            ).start();
+
+        } catch (Exception e) {
+
+            System.out.println(
+                    "⚠ Não foi possível trazer o Chrome para frente: "
+                            + e.getMessage()
+            );
+        }
+    }
+
+    private void ignorarSinal() {
+
+        statusLabel.setText(
+                "Sinal ignorado. Aguardando próximo sinal..."
+        );
+
+        direcaoLabel.setText("---");
+        direcaoLabel.setForeground(Color.BLACK);
+
+        confirmarButton.setEnabled(false);
+        ignorarButton.setEnabled(false);
+
+        try {
+            locator.removerDestaques();
+        } catch (Exception ignored) {
+        }
+
+        System.out.println();
+        System.out.println("Sinal ignorado pelo usuário.");
+        System.out.println();
     }
 
     private void iniciarMonitoramento() {
@@ -203,17 +350,22 @@ public class SignalReceiverWindow extends JFrame {
                 new Thread(
                         () -> {
 
-                            while (!Thread.currentThread().isInterrupted()) {
+                            while (
+                                    !Thread
+                                            .currentThread()
+                                            .isInterrupted()
+                            ) {
 
                                 try {
 
                                     consultarSinal();
-
                                     Thread.sleep(500);
 
                                 } catch (InterruptedException e) {
 
-                                    Thread.currentThread().interrupt();
+                                    Thread
+                                            .currentThread()
+                                            .interrupt();
                                     break;
 
                                 } catch (Exception e) {
@@ -226,12 +378,11 @@ public class SignalReceiverWindow extends JFrame {
                                     );
 
                                     try {
-
                                         Thread.sleep(1500);
-
                                     } catch (InterruptedException ex) {
-
-                                        Thread.currentThread().interrupt();
+                                        Thread
+                                                .currentThread()
+                                                .interrupt();
                                         break;
                                     }
                                 }
@@ -244,16 +395,17 @@ public class SignalReceiverWindow extends JFrame {
         thread.start();
     }
 
-    private void consultarSinal() throws Exception {
+    private void consultarSinal()
+            throws Exception {
 
         HttpURLConnection conexao =
                 (HttpURLConnection)
-                        URI.create(URL_SINAL)
+                        URI
+                                .create(URL_SINAL)
                                 .toURL()
                                 .openConnection();
 
         conexao.setRequestMethod("GET");
-
         conexao.setConnectTimeout(1000);
         conexao.setReadTimeout(1000);
 
@@ -273,14 +425,12 @@ public class SignalReceiverWindow extends JFrame {
             String linha;
 
             while (
-                    (linha = reader.readLine())
-                            != null
+                    (linha = reader.readLine()) != null
             ) {
-
                 json.append(linha);
             }
-        } finally {
 
+        } finally {
             conexao.disconnect();
         }
 
@@ -293,12 +443,14 @@ public class SignalReceiverWindow extends JFrame {
                 )
         ) {
 
-            SwingUtilities.invokeLater(
-                    () ->
-                            statusLabel.setText(
-                                    "Aguardando sinal..."
-                            )
-            );
+            if (ultimoTimestamp <= 0) {
+                SwingUtilities.invokeLater(
+                        () ->
+                                statusLabel.setText(
+                                        "Aguardando sinal..."
+                                )
+                );
+            }
 
             return;
         }
@@ -311,10 +463,8 @@ public class SignalReceiverWindow extends JFrame {
 
         if (
                 timestamp <= 0
-                        ||
-                        timestamp == ultimoTimestamp
+                        || timestamp == ultimoTimestamp
         ) {
-
             return;
         }
 
@@ -345,6 +495,12 @@ public class SignalReceiverWindow extends JFrame {
                         "payout"
                 );
 
+        ativoAtual = ativo;
+        direcaoAtual = direcao;
+        confiancaAtual = confianca;
+        payoutAtual = payout;
+        timestampAtual = timestamp;
+
         mostrarNovoSinal(
                 ativo,
                 direcao,
@@ -365,6 +521,16 @@ public class SignalReceiverWindow extends JFrame {
         SwingUtilities.invokeLater(
                 () -> {
 
+                    /*
+                     * Novo sinal recebido:
+                     * garante que NÃO exista destaque amarelo
+                     * antes da confirmação do usuário.
+                     */
+                    try {
+                        locator.removerDestaques();
+                    } catch (Exception ignored) {
+                    }
+
                     statusLabel.setText(
                             "NOVO SINAL RECEBIDO"
                     );
@@ -377,8 +543,33 @@ public class SignalReceiverWindow extends JFrame {
                             direcao
                     );
 
+                    if (
+                            "PARA CIMA".equalsIgnoreCase(
+                                    direcao
+                            )
+                    ) {
+
+                        direcaoLabel.setForeground(
+                                new Color(0, 140, 0)
+                        );
+
+                    } else if (
+                            "PARA BAIXO".equalsIgnoreCase(
+                                    direcao
+                            )
+                    ) {
+
+                        direcaoLabel.setForeground(
+                                new Color(190, 0, 0)
+                        );
+
+                    } else {
+                        direcaoLabel.setForeground(Color.BLACK);
+                    }
+
                     confiancaLabel.setText(
                             String.format(
+                                    Locale.US,
                                     "Confiança heurística: %.2f%%",
                                     confianca
                             )
@@ -386,23 +577,24 @@ public class SignalReceiverWindow extends JFrame {
 
                     payoutLabel.setText(
                             String.format(
+                                    Locale.US,
                                     "Payout: %.0f%%",
                                     payout
                             )
                     );
 
                     horarioLabel.setText(
-                            "Timestamp: "
-                                    +
-                                    timestamp
+                            "Timestamp: " + timestamp
                     );
+
+                    confirmarButton.setEnabled(true);
+                    ignorarButton.setEnabled(true);
 
                     Toolkit
                             .getDefaultToolkit()
                             .beep();
 
                     if (!isVisible()) {
-
                         setVisible(true);
                     }
 
@@ -419,20 +611,16 @@ public class SignalReceiverWindow extends JFrame {
         Pattern pattern =
                 Pattern.compile(
                         "\""
-                                +
-                                Pattern.quote(campo)
-                                +
-                                "\"\\s*:\\s*\"([^\"]*)\""
+                                + Pattern.quote(campo)
+                                + "\"\\s*:\\s*\"([^\"]*)\""
                 );
 
         Matcher matcher =
                 pattern.matcher(json);
 
         return matcher.find()
-                ?
-                matcher.group(1)
-                :
-                "";
+                ? matcher.group(1)
+                : "";
     }
 
     private double extrairDouble(
@@ -443,10 +631,8 @@ public class SignalReceiverWindow extends JFrame {
         Pattern pattern =
                 Pattern.compile(
                         "\""
-                                +
-                                Pattern.quote(campo)
-                                +
-                                "\"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)"
+                                + Pattern.quote(campo)
+                                + "\"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)"
                 );
 
         Matcher matcher =
@@ -456,9 +642,13 @@ public class SignalReceiverWindow extends JFrame {
             return 0;
         }
 
-        return Double.parseDouble(
-                matcher.group(1)
-        );
+        try {
+            return Double.parseDouble(
+                    matcher.group(1)
+            );
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     private long extrairLong(
@@ -469,10 +659,8 @@ public class SignalReceiverWindow extends JFrame {
         Pattern pattern =
                 Pattern.compile(
                         "\""
-                                +
-                                Pattern.quote(campo)
-                                +
-                                "\"\\s*:\\s*(\\d+)"
+                                + Pattern.quote(campo)
+                                + "\"\\s*:\\s*(\\d+)"
                 );
 
         Matcher matcher =
@@ -482,40 +670,57 @@ public class SignalReceiverWindow extends JFrame {
             return -1;
         }
 
-        return Long.parseLong(
-                matcher.group(1)
-        );
+        try {
+            return Long.parseLong(
+                    matcher.group(1)
+            );
+        } catch (NumberFormatException e) {
+            return -1;
+        }
     }
 
     private String formatarAtivo(
             String ativo
     ) {
 
-        if (ativo == null) {
+        if (
+                ativo == null
+                        || ativo.isBlank()
+        ) {
             return "---";
         }
 
+        String original =
+                ativo.trim();
+
+        boolean otc =
+                original
+                        .toLowerCase(Locale.ROOT)
+                        .endsWith("_otc");
+
         String s =
-                ativo.replace(
-                        "_otc",
-                        ""
-                );
+                original;
 
-        if (s.length() == 6) {
-
-            s =
-                    s.substring(0, 3)
-                            +
-                            "/"
-                            +
-                            s.substring(3);
+        if (otc) {
+            s = s.substring(
+                    0,
+                    s.length() - 4
+            );
         }
 
         if (
-                ativo.toLowerCase()
-                        .endsWith("_otc")
+                s.length() == 6
+                        && s.chars()
+                        .allMatch(Character::isLetter)
         ) {
 
+            s =
+                    s.substring(0, 3)
+                            + "/"
+                            + s.substring(3);
+        }
+
+        if (otc) {
             s += " OTC";
         }
 
