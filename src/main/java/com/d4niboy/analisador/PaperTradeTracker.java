@@ -43,7 +43,6 @@ public class PaperTradeTracker {
             String ativo,
             String direcao,
             double preco,
-            double confianca,
             double payout
     ) {
 
@@ -82,7 +81,6 @@ public class PaperTradeTracker {
                             preco,
                             agora,
                             expiracao,
-                            confianca,
                             payout
                     );
 
@@ -270,12 +268,6 @@ public class PaperTradeTracker {
 
         System.out.printf(
                 Locale.US,
-                "Confiança heurística: %.1f%%%n",
-                trade.getConfianca()
-        );
-
-        System.out.printf(
-                Locale.US,
                 "Payout: %.0f%%%n",
                 trade.getPayout()
         );
@@ -422,7 +414,6 @@ public class PaperTradeTracker {
                     e.empates,
                     taxa
             );
-
         }
 
         System.out.println(

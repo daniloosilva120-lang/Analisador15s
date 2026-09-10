@@ -59,7 +59,6 @@ public class SignalHttpServer {
     public static synchronized void publicarSinal(
             String ativo,
             String direcao,
-            double confianca,
             double payout
     ) {
 
@@ -82,11 +81,10 @@ public class SignalHttpServer {
         ultimoJsonSinal =
                 String.format(
                         Locale.US,
-                        "{\"timestamp\":%d,\"ativo\":\"%s\",\"direcao\":\"%s\",\"confianca\":%.2f,\"payout\":%.2f}",
+                        "{\"timestamp\":%d,\"ativo\":\"%s\",\"direcao\":\"%s\",\"payout\":%.2f}",
                         timestamp,
                         escaparJson(ativo),
                         escaparJson(direcao),
-                        confianca,
                         payout
                 );
     }

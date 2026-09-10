@@ -37,6 +37,13 @@ public class RealTimeFeed {
             new Analyzer15s();
 
     /*
+     * Coleta janelas de 10 candles para formar
+     * o banco de treinamento da IA.
+     */
+    private final CandleDatasetCollector datasetCollector =
+            new CandleDatasetCollector();
+
+    /*
      * O PaperTradeTracker não controla dinheiro.
      * Ele serve somente para acompanhar ACERTO/ERRO
      * das diferentes expirações.
@@ -79,9 +86,6 @@ public class RealTimeFeed {
 
     private volatile String saldoTextoAtual =
             "N/D";
-
-    private static final double CONFIANCA_MINIMA =
-            80.0;
 
     private static final int PAYOUT_MINIMO =
             80;
@@ -1353,10 +1357,6 @@ public class RealTimeFeed {
                 !normalizada.equals("DEMO")
                         &&
                         !normalizada.equals("REAL")
-                        &&
-                        !normalizada.equals(
-                                "DESCONHECIDO"
-                        )
         ) {
             return;
         }
@@ -2115,6 +2115,16 @@ public class RealTimeFeed {
             return;
         }
 
+        /*
+         * A IA usa uma janela móvel de 10 candles.
+         * A amostra só é gravada quando o 11º candle fecha,
+         * porque ele fornece o resultado real dos 15s seguintes.
+         */
+        datasetCollector.registrarJanela(
+                quote.ativo(),
+                candles
+        );
+
         if (candles.size() < 10) {
             return;
         }
@@ -2161,22 +2171,6 @@ public class RealTimeFeed {
             return;
         }
 
-        if (
-                sinal.confianca()
-                        < CONFIANCA_MINIMA
-        ) {
-
-            System.out.println(
-                    "⚠ Entrada ignorada: confiança "
-                            + sinal.confianca()
-                            + "% abaixo do mínimo de "
-                            + CONFIANCA_MINIMA
-                            + "%."
-            );
-
-            return;
-        }
-
         mostrar(
                 quote,
                 sinal,
@@ -2192,7 +2186,6 @@ public class RealTimeFeed {
         SignalHttpServer.publicarSinal(
                 quote.ativo(),
                 sinal.direcao(),
-                sinal.confianca(),
                 payoutAtual.doubleValue()
         );
 
@@ -2210,7 +2203,6 @@ public class RealTimeFeed {
                     quote.ativo(),
                     sinal.direcao(),
                     quote.preco(),
-                    sinal.confianca(),
                     payoutAtual.doubleValue()
             );
 
@@ -2241,12 +2233,6 @@ public class RealTimeFeed {
                         + formatarAtivo(
                         quote.ativo()
                 )
-        );
-
-        System.out.println(
-                "Confiança: "
-                        + sinal.confianca()
-                        + "%"
         );
 
         System.out.println(

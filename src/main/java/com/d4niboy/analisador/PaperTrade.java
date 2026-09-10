@@ -8,7 +8,6 @@ public class PaperTrade {
     private final double precoEntrada;
     private final long horarioEntrada;
     private final long expiracaoMs;
-    private final double confianca;
     private final double payout;
 
     private boolean invalida;
@@ -20,7 +19,6 @@ public class PaperTrade {
             double precoEntrada,
             long horarioEntrada,
             long expiracaoMs,
-            double confianca,
             double payout
     ) {
         this.id = id;
@@ -29,7 +27,6 @@ public class PaperTrade {
         this.precoEntrada = precoEntrada;
         this.horarioEntrada = horarioEntrada;
         this.expiracaoMs = expiracaoMs;
-        this.confianca = confianca;
         this.payout = payout;
     }
 
@@ -55,10 +52,6 @@ public class PaperTrade {
 
     public long getExpiracaoMs() {
         return expiracaoMs;
-    }
-
-    public double getConfianca() {
-        return confianca;
     }
 
     public double getPayout() {

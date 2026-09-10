@@ -14,8 +14,7 @@ public class Analyzer15s {
         if (c == null || c.size() < MIN_CANDLES) {
             return new Signal(
                     "NÃO OPERAR",
-                    0,
-                    "São necessárias pelo menos 20 velas."
+                    "São necessárias pelo menos 10 velas."
             );
         }
 
@@ -49,7 +48,6 @@ public class Analyzer15s {
         if (vol10 < VOL_MINIMA) {
             return new Signal(
                     "NÃO OPERAR",
-                    20,
                     "Mercado praticamente parado | Vol="
                             + pct(vol10)
                             + " | RSI="
@@ -78,7 +76,6 @@ public class Analyzer15s {
 
             return new Signal(
                     "NÃO OPERAR",
-                    30,
                     "Mercado lateral | Vol="
                             + pct(vol10)
                             + " | Mom="
@@ -540,24 +537,7 @@ public class Analyzer15s {
                     "momentum contra tendência; "
             );
         }
-
-        double magnitude =
-                Math.abs(score);
-
-        double confianca =
-                45
-                        +
-                        magnitude * 6.5;
-
-        confianca =
-                Math.max(
-                        0,
-                        Math.min(
-                                90,
-                                confianca
-                        )
-                );
-
+        double magnitude = Math.abs(score);
         String detalhes =
                 "Score="
                         + f(score)
@@ -574,7 +554,6 @@ public class Analyzer15s {
 
             return new Signal(
                     "NÃO OPERAR",
-                    confianca,
                     "Confluência insuficiente | "
                             + detalhes
             );
@@ -592,7 +571,6 @@ public class Analyzer15s {
 
             return new Signal(
                     "NÃO OPERAR",
-                    confianca,
                     "Compra sem confirmação de tendência | "
                             + detalhes
             );
@@ -610,7 +588,6 @@ public class Analyzer15s {
 
             return new Signal(
                     "NÃO OPERAR",
-                    confianca,
                     "Venda sem confirmação de tendência | "
                             + detalhes
             );
@@ -625,7 +602,6 @@ public class Analyzer15s {
 
         return new Signal(
                 direcao,
-                confianca,
                 motivo + detalhes
         );
     }
