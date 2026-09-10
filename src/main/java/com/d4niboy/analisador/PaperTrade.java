@@ -10,10 +10,7 @@ public class PaperTrade {
     private final long expiracaoMs;
     private final double confianca;
     private final double payout;
-    private final double valorEntrada;
-    private final double percentualRisco;
 
-    private boolean finalizada;
     private boolean invalida;
 
     public PaperTrade(
@@ -24,9 +21,7 @@ public class PaperTrade {
             long horarioEntrada,
             long expiracaoMs,
             double confianca,
-            double payout,
-            double valorEntrada,
-            double percentualRisco
+            double payout
     ) {
         this.id = id;
         this.ativo = ativo;
@@ -36,8 +31,6 @@ public class PaperTrade {
         this.expiracaoMs = expiracaoMs;
         this.confianca = confianca;
         this.payout = payout;
-        this.valorEntrada = valorEntrada;
-        this.percentualRisco = percentualRisco;
     }
 
     public long getId() {
@@ -56,16 +49,12 @@ public class PaperTrade {
         return precoEntrada;
     }
 
-    public long getHorarioEntrada() {
-        return horarioEntrada;
+    public long getHorarioExpiracao() {
+        return horarioEntrada + expiracaoMs;
     }
 
     public long getExpiracaoMs() {
         return expiracaoMs;
-    }
-
-    public long getHorarioExpiracao() {
-        return horarioEntrada + expiracaoMs;
     }
 
     public double getConfianca() {
@@ -74,22 +63,6 @@ public class PaperTrade {
 
     public double getPayout() {
         return payout;
-    }
-
-    public double getValorEntrada() {
-        return valorEntrada;
-    }
-
-    public double getPercentualRisco() {
-        return percentualRisco;
-    }
-
-    public boolean isFinalizada() {
-        return finalizada;
-    }
-
-    public void setFinalizada(boolean finalizada) {
-        this.finalizada = finalizada;
     }
 
     public boolean isInvalida() {

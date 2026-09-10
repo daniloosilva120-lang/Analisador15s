@@ -5,31 +5,13 @@ import java.util.Locale;
 
 public class Analyzer15s {
 
-    private static final int MIN_CANDLES = 20;
-
-    /*
-     * Quanto maior, mais seletivo.
-     *
-     * Mantemos relativamente alto para não transformar
-     * qualquer pequena oscilação em entrada.
-     */
-    private static final double SCORE_MINIMO = 4.00;
-
-    /*
-     * Volatilidade mínima absoluta.
-     *
-     * 0.000004 = 0.0004%
-     *
-     * Nos testes reais do USD/MXN OTC vimos algo
-     * próximo de 0.0011% - 0.0012%, portanto esse
-     * mercado não deve ser classificado como parado.
-     */
+    private static final int MIN_CANDLES = 10;
+    private static final double SCORE_MINIMO = 5.20;
     private static final double VOL_MINIMA = 0.000004;
 
     public Signal analisar(List<Candle> c) {
 
         if (c == null || c.size() < MIN_CANDLES) {
-
             return new Signal(
                     "NÃO OPERAR",
                     0,
@@ -37,122 +19,54 @@ public class Analyzer15s {
             );
         }
 
-        int n =
-                c.size();
-
-        Candle atual =
-                c.get(n - 1);
+        int n = c.size();
+        Candle atual = c.get(n - 1);
 
         double preco =
-                Math.max(
-                        Math.abs(atual.close()),
-                        0.0000001
-                );
+                Math.max(Math.abs(atual.close()), 0.0000001);
 
-        /*
-         * ============================================================
-         * INDICADORES
-         * ============================================================
-         */
+        double rsi14 = rsi(c, 14);
 
-        double rsi14 =
-                rsi(c, 14);
+        double sma5 = sma(c, 5);
+        double sma10 = sma(c, 10);
+        double sma20 = sma(c, 20);
 
-        double sma5 =
-                sma(c, 5);
+        double vol5 = volatilidadeNormalizada(c, 5);
+        double vol10 = volatilidadeNormalizada(c, 10);
 
-        double sma10 =
-                sma(c, 10);
+        double momentum3 = retorno(c, 3);
+        double momentum5 = retorno(c, 5);
 
-        double sma20 =
-                sma(c, 20);
-
-        double vol5 =
-                volatilidadeNormalizada(c, 5);
-
-        double vol10 =
-                volatilidadeNormalizada(c, 10);
-
-        double momentum3 =
-                retorno(c, 3);
-
-        double momentum5 =
-                retorno(c, 5);
-
-        double slope5 =
-                inclinacaoSma(c, 5, 3);
-
-        double slope10 =
-                inclinacaoSma(c, 10, 3);
+        double slope5 = inclinacaoSma(c, 5, 3);
+        double slope10 = inclinacaoSma(c, 10, 3);
 
         double distancia5_20 =
-                Math.abs(sma5 - sma20)
-                        /
-                        preco;
-
-        /*
-         * ============================================================
-         * ESCALA ADAPTATIVA
-         * ============================================================
-         *
-         * O problema anterior era usar números fixos que funcionariam
-         * em mercados mais voláteis, mas eram grandes demais para o
-         * USD/MXN OTC em candles de 15 segundos.
-         *
-         * Agora utilizamos a volatilidade recente como referência.
-         */
+                Math.abs(sma5 - sma20) / preco;
 
         double escala =
-                Math.max(
-                        vol10,
-                        VOL_MINIMA
-                );
-
-        /*
-         * ============================================================
-         * 1. MERCADO REALMENTE PARADO
-         * ============================================================
-         */
+                Math.max(vol10, VOL_MINIMA);
 
         if (vol10 < VOL_MINIMA) {
-
             return new Signal(
                     "NÃO OPERAR",
                     20,
-                    "Mercado praticamente parado"
-                            +
-                            " | Vol=" + pct(vol10)
-                            +
-                            " | RSI=" + f(rsi14)
+                    "Mercado praticamente parado | Vol="
+                            + pct(vol10)
+                            + " | RSI="
+                            + f(rsi14)
             );
         }
 
-        /*
-         * ============================================================
-         * 2. LATERALIZAÇÃO
-         * ============================================================
-         *
-         * Os limites agora dependem da volatilidade.
-         */
-
         boolean mediasJuntas =
-                distancia5_20
-                        <
-                        escala * 0.70;
+                distancia5_20 < escala * 0.70;
 
         boolean momentumFraco =
-                Math.abs(momentum5)
-                        <
-                        escala * 1.10;
+                Math.abs(momentum5) < escala * 1.10;
 
         boolean slopesFracos =
-                Math.abs(slope5)
-                        <
-                        escala * 0.18
+                Math.abs(slope5) < escala * 0.18
                         &&
-                        Math.abs(slope10)
-                                <
-                                escala * 0.12;
+                        Math.abs(slope10) < escala * 0.12;
 
         if (
                 mediasJuntas
@@ -165,27 +79,17 @@ public class Analyzer15s {
             return new Signal(
                     "NÃO OPERAR",
                     30,
-                    "Mercado lateral"
-                            +
-                            " | Vol=" + pct(vol10)
-                            +
-                            " | Mom=" + pct(momentum5)
-                            +
-                            " | RSI=" + f(rsi14)
+                    "Mercado lateral | Vol="
+                            + pct(vol10)
+                            + " | Mom="
+                            + pct(momentum5)
+                            + " | RSI="
+                            + f(rsi14)
             );
         }
 
-        double score =
-                0.0;
-
-        StringBuilder motivo =
-                new StringBuilder();
-
-        /*
-         * ============================================================
-         * 3. ALINHAMENTO DAS MÉDIAS
-         * ============================================================
-         */
+        double score = 0.0;
+        StringBuilder motivo = new StringBuilder();
 
         boolean mediasAlta =
                 sma5 > sma10
@@ -213,19 +117,6 @@ public class Analyzer15s {
                     "médias alinhadas para baixa; "
             );
         }
-
-        /*
-         * ============================================================
-         * 4. INCLINAÇÃO DAS MÉDIAS
-         * ============================================================
-         *
-         * Antes:
-         *
-         * slope5 > 0.00003
-         *
-         * Isso era grande demais para os movimentos
-         * reais registrados.
-         */
 
         double limiteSlope5 =
                 escala * 0.18;
@@ -258,12 +149,6 @@ public class Analyzer15s {
             );
         }
 
-        /*
-         * ============================================================
-         * 5. MOMENTUM
-         * ============================================================
-         */
-
         if (
                 momentum3 > 0
                         &&
@@ -289,18 +174,10 @@ public class Analyzer15s {
             );
         }
 
-        /*
-         * Momentum forte relativo à volatilidade.
-         */
-
         double momentumForte =
                 escala * 1.50;
 
-        if (
-                momentum5
-                        >
-                        momentumForte
-        ) {
+        if (momentum5 > momentumForte) {
 
             score += 0.45;
 
@@ -309,9 +186,7 @@ public class Analyzer15s {
             );
 
         } else if (
-                momentum5
-                        <
-                        -momentumForte
+                momentum5 < -momentumForte
         ) {
 
             score -= 0.45;
@@ -321,16 +196,10 @@ public class Analyzer15s {
             );
         }
 
-        /*
-         * ============================================================
-         * 6. RSI
-         * ============================================================
-         */
-
         if (
-                rsi14 >= 53
+                rsi14 >= 55
                         &&
-                        rsi14 <= 68
+                        rsi14 <= 65
         ) {
 
             score += 0.75;
@@ -340,9 +209,9 @@ public class Analyzer15s {
             );
 
         } else if (
-                rsi14 <= 47
+                rsi14 <= 45
                         &&
-                        rsi14 >= 32
+                        rsi14 >= 35
         ) {
 
             score -= 0.75;
@@ -351,10 +220,6 @@ public class Analyzer15s {
                     "RSI confirma venda; "
             );
         }
-
-        /*
-         * RSI muito esticado.
-         */
 
         if (rsi14 >= 78) {
 
@@ -373,29 +238,14 @@ public class Analyzer15s {
             );
         }
 
-        /*
-         * ============================================================
-         * 7. PRESSÃO DOS ÚLTIMOS 6 CANDLES
-         * ============================================================
-         */
+        int altas = 0;
+        int baixas = 0;
 
-        int altas =
-                0;
-
-        int baixas =
-                0;
-
-        double forcaAlta =
-                0;
-
-        double forcaBaixa =
-                0;
+        double forcaAlta = 0;
+        double forcaBaixa = 0;
 
         int inicio =
-                Math.max(
-                        0,
-                        n - 6
-                );
+                Math.max(0, n - 6);
 
         for (
                 int i = inicio;
@@ -420,16 +270,12 @@ public class Analyzer15s {
             if (x.isAlta()) {
 
                 altas++;
-
-                forcaAlta +=
-                        corpo;
+                forcaAlta += corpo;
 
             } else if (x.isBaixa()) {
 
                 baixas++;
-
-                forcaBaixa +=
-                        corpo;
+                forcaBaixa += corpo;
             }
         }
 
@@ -459,12 +305,6 @@ public class Analyzer15s {
             );
         }
 
-        /*
-         * ============================================================
-         * 8. CANDLE ATUAL
-         * ============================================================
-         */
-
         double amplitudeAtual =
                 Math.max(
                         atual.amplitude(),
@@ -477,7 +317,11 @@ public class Analyzer15s {
                         amplitudeAtual;
 
         double posicaoFechamento =
-                (atual.close() - atual.low())
+                (
+                        atual.close()
+                                -
+                                atual.low()
+                )
                         /
                         amplitudeAtual;
 
@@ -510,12 +354,6 @@ public class Analyzer15s {
                     "candle vendedor forte; "
             );
         }
-
-        /*
-         * ============================================================
-         * 9. PAVIOS
-         * ============================================================
-         */
 
         double pavioSuperior =
                 atual.pavioSuperior()
@@ -557,12 +395,6 @@ public class Analyzer15s {
             );
         }
 
-        /*
-         * ============================================================
-         * 10. SUPORTE / RESISTÊNCIA
-         * ============================================================
-         */
-
         double max10 =
                 maiorMaxima(c, 10);
 
@@ -571,14 +403,18 @@ public class Analyzer15s {
 
         double distanciaResistencia =
                 Math.abs(
-                        max10 - atual.close()
+                        max10
+                                -
+                                atual.close()
                 )
                         /
                         preco;
 
         double distanciaSuporte =
                 Math.abs(
-                        atual.close() - min10
+                        atual.close()
+                                -
+                                min10
                 )
                         /
                         preco;
@@ -589,9 +425,7 @@ public class Analyzer15s {
         if (
                 score > 0
                         &&
-                        distanciaResistencia
-                                <
-                                limiteSR
+                        distanciaResistencia < limiteSR
                         &&
                         atual.close() < max10
         ) {
@@ -606,9 +440,7 @@ public class Analyzer15s {
         if (
                 score < 0
                         &&
-                        distanciaSuporte
-                                <
-                                limiteSR
+                        distanciaSuporte < limiteSR
                         &&
                         atual.close() > min10
         ) {
@@ -620,12 +452,6 @@ public class Analyzer15s {
             );
         }
 
-        /*
-         * ============================================================
-         * 11. EXPANSÃO DE VOLATILIDADE
-         * ============================================================
-         */
-
         if (
                 vol5 > vol10 * 1.15
                         &&
@@ -635,11 +461,8 @@ public class Analyzer15s {
         ) {
 
             if (momentum3 > 0) {
-
                 score += 0.35;
-
             } else {
-
                 score -= 0.35;
             }
 
@@ -647,12 +470,6 @@ public class Analyzer15s {
                     "expansão de volatilidade; "
             );
         }
-
-        /*
-         * ============================================================
-         * 12. TENDÊNCIA COMPLETA
-         * ============================================================
-         */
 
         boolean tendenciaAlta =
                 mediasAlta
@@ -667,13 +484,6 @@ public class Analyzer15s {
                         slope5 < 0
                         &&
                         slope10 <= 0;
-
-        /*
-         * Confirmação adicional se:
-         *
-         * médias + inclinação + momentum
-         * apontam todos para a mesma direção.
-         */
 
         if (
                 tendenciaAlta
@@ -705,12 +515,6 @@ public class Analyzer15s {
             );
         }
 
-        /*
-         * ============================================================
-         * 13. CONFLITOS
-         * ============================================================
-         */
-
         if (
                 tendenciaAlta
                         &&
@@ -737,20 +541,9 @@ public class Analyzer15s {
             );
         }
 
-        /*
-         * ============================================================
-         * DECISÃO
-         * ============================================================
-         */
-
         double magnitude =
                 Math.abs(score);
 
-        /*
-         * Continua sendo apenas uma pontuação heurística.
-         *
-         * Não representa probabilidade garantida de acerto.
-         */
         double confianca =
                 45
                         +
@@ -766,81 +559,60 @@ public class Analyzer15s {
                 );
 
         String detalhes =
-                "Score=" + f(score)
-                        +
-                        " | RSI=" + f(rsi14)
-                        +
-                        " | Mom3=" + pct(momentum3)
-                        +
-                        " | Mom5=" + pct(momentum5)
-                        +
-                        " | Vol5=" + pct(vol5)
-                        +
-                        " | Vol10=" + pct(vol10)
-                        +
-                        " | Slope5=" + pct(slope5)
-                        +
-                        " | Slope10=" + pct(slope10);
-
-        /*
-         * Ainda não existe confluência suficiente.
-         */
+                "Score="
+                        + f(score)
+                        + " | RSI="
+                        + f(rsi14)
+                        + " | Mom3="
+                        + pct(momentum3)
+                        + " | Mom5="
+                        + pct(momentum5);
 
         if (
-                magnitude
-                        <
-                        SCORE_MINIMO
+                magnitude < SCORE_MINIMO
         ) {
 
             return new Signal(
                     "NÃO OPERAR",
                     confianca,
                     "Confluência insuficiente | "
-                            +
-                            detalhes
+                            + detalhes
             );
         }
-
-        /*
-         * Não libera compra quando o score positivo
-         * é formado apenas por sinais isolados.
-         */
 
         if (
                 score > 0
                         &&
-                        !tendenciaAlta
-                        &&
-                        momentum5 <= 0
+                        (
+                                !tendenciaAlta
+                                        ||
+                                        momentum5 <= 0
+                        )
         ) {
 
             return new Signal(
                     "NÃO OPERAR",
                     confianca,
-                    "Compra sem confirmação suficiente | "
-                            +
-                            detalhes
+                    "Compra sem confirmação de tendência | "
+                            + detalhes
             );
         }
-
-        /*
-         * Mesmo princípio para venda.
-         */
 
         if (
                 score < 0
                         &&
-                        !tendenciaBaixa
-                        &&
-                        momentum5 >= 0
+                        (
+                                !tendenciaBaixa
+                                        ||
+                                        momentum5 >= 0
+                        )
         ) {
 
             return new Signal(
                     "NÃO OPERAR",
                     confianca,
-                    "Venda sem confirmação suficiente | "
-                            +
-                            detalhes
+                    "Venda sem confirmação de tendência | "
+                            + detalhes
             );
         }
 
@@ -854,17 +626,9 @@ public class Analyzer15s {
         return new Signal(
                 direcao,
                 confianca,
-                motivo
-                        +
-                        detalhes
+                motivo + detalhes
         );
     }
-
-    /*
-     * ============================================================
-     * SMA
-     * ============================================================
-     */
 
     private double sma(
             List<Candle> c,
@@ -892,12 +656,10 @@ public class Analyzer15s {
             return 0;
         }
 
-        double soma =
-                0;
+        double soma = 0;
 
         for (
-                int i =
-                fimExclusivo - periodo;
+                int i = fimExclusivo - periodo;
                 i < fimExclusivo;
                 i++
         ) {
@@ -906,16 +668,8 @@ public class Analyzer15s {
                     c.get(i).close();
         }
 
-        return soma
-                /
-                periodo;
+        return soma / periodo;
     }
-
-    /*
-     * ============================================================
-     * INCLINAÇÃO DA SMA
-     * ============================================================
-     */
 
     private double inclinacaoSma(
             List<Candle> c,
@@ -927,10 +681,7 @@ public class Analyzer15s {
                 c.size();
 
         if (
-                n <
-                        periodo
-                                +
-                                deslocamento
+                n < periodo + deslocamento
         ) {
             return 0;
         }
@@ -952,22 +703,19 @@ public class Analyzer15s {
         double preco =
                 Math.max(
                         Math.abs(
-                                c.get(n - 1)
-                                        .close()
+                                c.get(n - 1).close()
                         ),
                         0.0000001
                 );
 
-        return (atual - anterior)
+        return (
+                atual
+                        -
+                        anterior
+        )
                 /
                 preco;
     }
-
-    /*
-     * ============================================================
-     * RETORNO
-     * ============================================================
-     */
 
     private double retorno(
             List<Candle> c,
@@ -978,19 +726,21 @@ public class Analyzer15s {
                 c.size();
 
         int indice =
-                n - 1 - candlesAtras;
+                n
+                        -
+                        1
+                        -
+                        candlesAtras;
 
         if (indice < 0) {
             return 0;
         }
 
         double antigo =
-                c.get(indice)
-                        .close();
+                c.get(indice).close();
 
         double atual =
-                c.get(n - 1)
-                        .close();
+                c.get(n - 1).close();
 
         if (
                 Math.abs(antigo)
@@ -1000,16 +750,14 @@ public class Analyzer15s {
             return 0;
         }
 
-        return (atual - antigo)
+        return (
+                atual
+                        -
+                        antigo
+        )
                 /
                 Math.abs(antigo);
     }
-
-    /*
-     * ============================================================
-     * VOLATILIDADE
-     * ============================================================
-     */
 
     private double volatilidadeNormalizada(
             List<Candle> c,
@@ -1022,11 +770,8 @@ public class Analyzer15s {
                         c.size() - periodo
                 );
 
-        double soma =
-                0;
-
-        int quantidade =
-                0;
+        double soma = 0;
+        int quantidade = 0;
 
         for (
                 int i = inicio;
@@ -1057,16 +802,8 @@ public class Analyzer15s {
                 ?
                 0
                 :
-                soma
-                        /
-                        quantidade;
+                soma / quantidade;
     }
-
-    /*
-     * ============================================================
-     * RSI
-     * ============================================================
-     */
 
     private double rsi(
             List<Candle> c,
@@ -1074,23 +811,16 @@ public class Analyzer15s {
     ) {
 
         if (
-                c.size()
-                        <=
-                        periodo
+                c.size() <= periodo
         ) {
             return 50;
         }
 
-        double ganhos =
-                0;
-
-        double perdas =
-                0;
+        double ganhos = 0;
+        double perdas = 0;
 
         int inicio =
-                c.size()
-                        -
-                        periodo;
+                c.size() - periodo;
 
         for (
                 int i = inicio;
@@ -1103,15 +833,17 @@ public class Analyzer15s {
                             -
                             c.get(i - 1).close();
 
-            if (diferenca > 0) {
+            if (
+                    diferenca > 0
+            ) {
 
-                ganhos +=
-                        diferenca;
+                ganhos += diferenca;
 
-            } else if (diferenca < 0) {
+            } else if (
+                    diferenca < 0
+            ) {
 
-                perdas -=
-                        diferenca;
+                perdas -= diferenca;
             }
         }
 
@@ -1132,14 +864,10 @@ public class Analyzer15s {
         }
 
         double mediaGanhos =
-                ganhos
-                        /
-                        periodo;
+                ganhos / periodo;
 
         double mediaPerdas =
-                perdas
-                        /
-                        periodo;
+                perdas / periodo;
 
         double rs =
                 mediaGanhos
@@ -1154,12 +882,6 @@ public class Analyzer15s {
                                 (1 + rs)
                 );
     }
-
-    /*
-     * ============================================================
-     * MÁXIMA
-     * ============================================================
-     */
 
     private double maiorMaxima(
             List<Candle> c,
@@ -1191,12 +913,6 @@ public class Analyzer15s {
         return maior;
     }
 
-    /*
-     * ============================================================
-     * MÍNIMA
-     * ============================================================
-     */
-
     private double menorMinima(
             List<Candle> c,
             int periodo
@@ -1226,12 +942,6 @@ public class Analyzer15s {
 
         return menor;
     }
-
-    /*
-     * ============================================================
-     * FORMATAÇÃO
-     * ============================================================
-     */
 
     private String f(
             double valor

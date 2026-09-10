@@ -5,13 +5,20 @@ import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeDriverService;
 import org.openqa.selenium.chrome.ChromeOptions;
 
+import java.io.File;
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class PlatformButtonLocator {
+
+    private static final String CHROMEDRIVER_PATH =
+            "C:\\Users\\Engenharia\\.cache\\selenium\\chromedriver\\win64\\151.0.7922.138\\chromedriver.exe";
 
     private WebDriver driver;
 
@@ -21,69 +28,71 @@ public class PlatformButtonLocator {
             return;
         }
 
-        ChromeOptions options =
-                new ChromeOptions();
+        try {
 
-        /*
-         * Usa o MESMO Chrome aberto pela
-         * porta de depuração 9222.
-         */
-        options.setExperimentalOption(
-                "debuggerAddress",
-                "127.0.0.1:9222"
-        );
+            Logger.getLogger(
+                    "org.openqa.selenium.manager.SeleniumManager"
+            ).setLevel(Level.OFF);
 
-        driver =
-                new ChromeDriver(options);
+            ChromeOptions options =
+                    new ChromeOptions();
 
-        driver.manage()
-                .timeouts()
-                .implicitlyWait(
-                        Duration.ofSeconds(1)
-                );
+            options.setExperimentalOption(
+                    "debuggerAddress",
+                    "127.0.0.1:9222"
+            );
 
-        System.out.println();
-        System.out.println(
-                "Selenium conectado ao Chrome."
-        );
+            ChromeDriverService service =
+                    new ChromeDriverService.Builder()
+                            .usingDriverExecutable(
+                                    new File(
+                                            CHROMEDRIVER_PATH
+                                    )
+                            )
+                            .build();
+
+            driver =
+                    new ChromeDriver(
+                            service,
+                            options
+                    );
+
+            driver.manage()
+                    .timeouts()
+                    .implicitlyWait(
+                            Duration.ofSeconds(1)
+                    );
+
+        } catch (Exception e) {
+
+            driver = null;
+
+            System.out.println(
+                    "⚠ Erro ao conectar Selenium ao Chrome: "
+                            + e.getMessage()
+            );
+        }
     }
 
-
-    /*
-     * ============================================================
-     * DESTACA O BOTÃO DO SINAL
-     * ============================================================
-     *
-     * IMPORTANTE:
-     *
-     * Primeiro remove qualquer destaque criado
-     * anteriormente pelo analisador.
-     *
-     * Depois destaca SOMENTE o botão correspondente
-     * ao sinal atual.
-     *
-     * NÃO executa click().
-     */
     public synchronized boolean destacarBotao(
             String direcao
     ) {
 
         conectar();
 
+        if (driver == null) {
+            return false;
+        }
+
         if (
                 direcao == null
                         ||
                         direcao.isBlank()
         ) {
-
             return false;
         }
 
-        /*
-         * Remove o amarelo do sinal anterior.
-         */
         removerDestaques();
-
 
         String textoProcurado;
 
@@ -108,115 +117,70 @@ public class PlatformButtonLocator {
         } else {
 
             System.out.println(
-                    "Direção desconhecida: "
-                            +
-                            direcao
+                    "⚠ Direção desconhecida: "
+                            + direcao
             );
 
             return false;
         }
-
 
         WebElement botao =
                 localizarBotao(
                         textoProcurado
                 );
 
-
         if (botao == null) {
 
-            System.out.println();
             System.out.println(
-                    "⚠ Selenium não encontrou o botão: "
-                            +
-                            textoProcurado
+                    "⚠ Botão não encontrado: "
+                            + textoProcurado
             );
 
             return false;
         }
 
+        try {
 
-        JavascriptExecutor js =
-                (JavascriptExecutor) driver;
+            JavascriptExecutor js =
+                    (JavascriptExecutor) driver;
 
+            js.executeScript(
+                    """
+                    arguments[0].setAttribute(
+                        'data-analisador15s-highlight',
+                        'true'
+                    );
 
-        /*
-         * Marca o elemento para podermos
-         * remover o destaque posteriormente.
-         *
-         * NÃO executa clique.
-         */
-        js.executeScript(
-                """
-                arguments[0].setAttribute(
-                    'data-analisador15s-highlight',
-                    'true'
-                );
+                    arguments[0].scrollIntoView({
+                        block: 'center',
+                        inline: 'center'
+                    });
 
-                arguments[0].scrollIntoView({
-                    block: 'center',
-                    inline: 'center'
-                });
+                    arguments[0].style.outline =
+                        '5px solid yellow';
 
-                arguments[0].style.outline =
-                    '5px solid yellow';
+                    arguments[0].style.outlineOffset =
+                        '4px';
 
-                arguments[0].style.outlineOffset =
-                    '4px';
+                    arguments[0].style.boxShadow =
+                        '0 0 20px yellow';
+                    """,
+                    botao
+            );
 
-                arguments[0].style.boxShadow =
-                    '0 0 20px yellow';
-                """,
-                botao
-        );
+            return true;
 
+        } catch (Exception e) {
 
-        System.out.println();
-        System.out.println(
-                "========================================"
-        );
+            System.out.println(
+                    "⚠ Erro ao destacar botão: "
+                            + e.getMessage()
+            );
 
-        System.out.println(
-                "BOTÃO LOCALIZADO PELO SELENIUM"
-        );
-
-        System.out.println(
-                "Direção: "
-                        +
-                        direcao
-        );
-
-        System.out.println(
-                "Texto do botão: "
-                        +
-                        botao.getText()
-        );
-
-        System.out.println(
-                "✓ Destaque anterior removido."
-        );
-
-        System.out.println(
-                "✓ Somente o botão atual foi destacado."
-        );
-
-        System.out.println(
-                "Clique NÃO executado."
-        );
-
-        System.out.println(
-                "========================================"
-        );
-
-        return true;
+            return false;
+        }
     }
 
-
-    /*
-     * ============================================================
-     * REMOVE DESTAQUES ANTIGOS
-     * ============================================================
-     */
     public synchronized void removerDestaques() {
 
         if (driver == null) {
@@ -250,19 +214,12 @@ public class PlatformButtonLocator {
         } catch (Exception e) {
 
             System.out.println(
-                    "⚠ Não foi possível remover o destaque anterior: "
-                            +
-                            e.getMessage()
+                    "⚠ Não foi possível remover o destaque: "
+                            + e.getMessage()
             );
         }
     }
 
-
-    /*
-     * ============================================================
-     * LOCALIZA BOTÃO
-     * ============================================================
-     */
     private WebElement localizarBotao(
             String texto
     ) {
@@ -272,11 +229,7 @@ public class PlatformButtonLocator {
                         By.tagName("button")
                 );
 
-
-        for (
-                WebElement botao :
-                botoes
-        ) {
+        for (WebElement botao : botoes) {
 
             try {
 
@@ -284,12 +237,10 @@ public class PlatformButtonLocator {
                     continue;
                 }
 
-
                 String visivel =
                         normalizar(
                                 botao.getText()
                         );
-
 
                 String aria =
                         normalizar(
@@ -298,14 +249,12 @@ public class PlatformButtonLocator {
                                 )
                         );
 
-
                 String title =
                         normalizar(
                                 botao.getAttribute(
                                         "title"
                                 )
                         );
-
 
                 if (
                         visivel.contains(texto)
@@ -322,16 +271,9 @@ public class PlatformButtonLocator {
             }
         }
 
-
         return null;
     }
 
-
-    /*
-     * ============================================================
-     * NORMALIZAÇÃO
-     * ============================================================
-     */
     private String normalizar(
             String texto
     ) {

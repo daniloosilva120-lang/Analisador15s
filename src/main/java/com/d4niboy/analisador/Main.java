@@ -4,36 +4,17 @@ public class Main {
 
     public static void main(String[] args) {
 
-        // ========================================
-        // SERVIDOR LOCAL DE SINAIS
-        // ========================================
+        // Servidor local de sinais
         SignalHttpServer.iniciar();
 
-        // ========================================
-        // JANELA RECEPTORA DE SINAIS
-        // ========================================
+        // Janela receptora de sinais
         SignalReceiverWindow.abrir();
 
-        // ========================================
-        // INÍCIO DO ANALISADOR
-        // ========================================
-        System.out.println("========================================");
-        System.out.println("   ANALISADOR 15s - SISTEMA COMPLETO");
-        System.out.println("========================================");
-        System.out.println();
-        System.out.println("Modo AUTO-CLICK ATIVADO. Operações REAIS ativadas!");
-        System.out.println("O robô será conectado ao Chrome em segundo plano.");
-        System.out.println();
-
-        // ========================================
-        // INICIA O FEED DE DADOS REAIS (E O ROBÔ JUNTO)
-        // ========================================
+        // Inicia o feed de dados reais e o robô
         RealTimeFeed feed = new RealTimeFeed();
         feed.iniciar();
 
-        // ========================================
-        // MANTÉM O PROGRAMA EXECUTANDO
-        // ========================================
+        // Mantém o programa executando
         try {
             Thread.currentThread().join();
         } catch (InterruptedException e) {

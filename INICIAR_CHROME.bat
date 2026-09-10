@@ -1,4 +1,5 @@
 @echo off
+title Chrome Especial - Analisador15s
 
 set "CHROME=C:\Program Files\Google\Chrome\Application\chrome.exe"
 
@@ -8,23 +9,24 @@ if not exist "%CHROME%" (
 
 if not exist "%CHROME%" (
     echo Chrome nao encontrado.
-    echo Instale o Google Chrome.
-    pause
     exit /b 1
 )
 
-set "PERFIL=%USERPROFILE%\ChromeAnalisador15s"
+echo ==========================================
+echo   INICIANDO CHROME PARA O ANALISADOR 15s
+echo ==========================================
+echo.
 
 start "" "%CHROME%" ^
  --remote-debugging-port=9222 ^
- --user-data-dir="%PERFIL%" ^
+ --user-data-dir="C:\ChromeDebug2" ^
  --no-first-run ^
- --no-default-browser-check
+ --no-default-browser-check ^
+ --new-window ^
+ "https://qxbroker.com/pt/demo-trade"
 
-echo.
-echo Chrome especial iniciado.
-echo.
-echo Entre manualmente na plataforma.
-echo Aguarde carregar totalmente antes de iniciar o analisador.
-echo.
-pause
+echo Chrome especial iniciado na porta 9222.
+echo Perfil: C:\ChromeDebug2
+echo Seu Chrome normal continuara aberto.
+
+exit /b 0

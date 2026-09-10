@@ -8,224 +8,775 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class SignalReceiverWindow extends JFrame {
+public class SignalReceiverWindow
+        extends JFrame {
 
-    private static final String URL_SINAL = "http://127.0.0.1:8765/sinal";
+    private static final String URL_SINAL =
+            "http://127.0.0.1:8765/sinal";
+
+    private static final DateTimeFormatter HORARIO =
+            DateTimeFormatter
+                    .ofPattern(
+                            "HH:mm:ss"
+                    )
+                    .withZone(
+                            ZoneId.systemDefault()
+                    );
 
     private final JLabel statusLabel =
-            new JLabel("AGUARDANDO SINAL DO ROBÔ...", SwingConstants.CENTER);
+            new JLabel(
+                    "AGUARDANDO SINAL...",
+                    SwingConstants.CENTER
+            );
 
     private final JLabel ativoLabel =
-            new JLabel("---", SwingConstants.CENTER);
+            new JLabel(
+                    "---",
+                    SwingConstants.CENTER
+            );
 
     private final JLabel direcaoLabel =
-            new JLabel("---", SwingConstants.CENTER);
+            new JLabel(
+                    "---",
+                    SwingConstants.CENTER
+            );
 
     private final JLabel confiancaLabel =
-            new JLabel("Confiança: ---", SwingConstants.CENTER);
+            new JLabel(
+                    "Confiança: ---",
+                    SwingConstants.CENTER
+            );
 
     private final JLabel payoutLabel =
-            new JLabel("Payout: ---", SwingConstants.CENTER);
+            new JLabel(
+                    "Payout: ---",
+                    SwingConstants.CENTER
+            );
 
     private final JLabel horarioLabel =
-            new JLabel("Último sinal: ---", SwingConstants.CENTER);
+            new JLabel(
+                    "Último sinal: ---",
+                    SwingConstants.CENTER
+            );
 
-    private volatile long ultimoTimestamp = -1;
-    private volatile String ativoAtual = null;
-    private volatile String direcaoAtual = null;
-    private volatile double confiancaAtual = 0;
-    private volatile double payoutAtual = 0;
+    private volatile long ultimoTimestamp =
+            -1;
 
     public SignalReceiverWindow() {
-        super("Analisador15s - Robô Automático");
+
+        super(
+                "Analisador15s"
+        );
+
         configurarJanela();
+
         iniciarMonitoramento();
     }
 
     private void configurarJanela() {
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setSize(450, 380);
-        setLocationRelativeTo(null);
-        setAlwaysOnTop(true);
 
-        JPanel painel = new JPanel();
-        painel.setLayout(new BoxLayout(painel, BoxLayout.Y_AXIS));
-        painel.setBorder(new EmptyBorder(25, 30, 25, 30));
+        setDefaultCloseOperation(
+                JFrame.DISPOSE_ON_CLOSE
+        );
 
-        JLabel titulo = new JLabel("ANALISADOR 15s", SwingConstants.CENTER);
-        titulo.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 22));
-        titulo.setAlignmentX(Component.CENTER_ALIGNMENT);
+        setSize(
+                450,
+                380
+        );
 
-        statusLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 15));
-        statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        statusLabel.setForeground(new Color(0, 140, 0));
+        setLocationRelativeTo(
+                null
+        );
 
-        ativoLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 28));
-        ativoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        setAlwaysOnTop(
+                true
+        );
 
-        direcaoLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 25));
-        direcaoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        JPanel painel =
+                new JPanel();
 
-        confiancaLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 16));
-        confiancaLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        painel.setLayout(
+                new BoxLayout(
+                        painel,
+                        BoxLayout.Y_AXIS
+                )
+        );
 
-        payoutLabel.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 16));
-        payoutLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        painel.setBorder(
+                new EmptyBorder(
+                        25,
+                        30,
+                        25,
+                        30
+                )
+        );
 
-        horarioLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        JLabel titulo =
+                new JLabel(
+                        "ANALISADOR 15s",
+                        SwingConstants.CENTER
+                );
 
-        painel.add(titulo);
-        painel.add(Box.createVerticalStrut(15));
-        painel.add(statusLabel);
-        painel.add(Box.createVerticalStrut(20));
-        painel.add(ativoLabel);
-        painel.add(Box.createVerticalStrut(10));
-        painel.add(direcaoLabel);
-        painel.add(Box.createVerticalStrut(15));
-        painel.add(confiancaLabel);
-        painel.add(Box.createVerticalStrut(5));
-        painel.add(payoutLabel);
-        painel.add(Box.createVerticalStrut(10));
-        painel.add(horarioLabel);
+        titulo.setFont(
+                new Font(
+                        Font.SANS_SERIF,
+                        Font.BOLD,
+                        22
+                )
+        );
 
-        setContentPane(painel);
+        titulo.setAlignmentX(
+                Component.CENTER_ALIGNMENT
+        );
+
+        statusLabel.setFont(
+                new Font(
+                        Font.SANS_SERIF,
+                        Font.BOLD,
+                        15
+                )
+        );
+
+        statusLabel.setAlignmentX(
+                Component.CENTER_ALIGNMENT
+        );
+
+        statusLabel.setForeground(
+                new Color(
+                        0,
+                        140,
+                        0
+                )
+        );
+
+        ativoLabel.setFont(
+                new Font(
+                        Font.SANS_SERIF,
+                        Font.BOLD,
+                        28
+                )
+        );
+
+        ativoLabel.setAlignmentX(
+                Component.CENTER_ALIGNMENT
+        );
+
+        direcaoLabel.setFont(
+                new Font(
+                        Font.SANS_SERIF,
+                        Font.BOLD,
+                        25
+                )
+        );
+
+        direcaoLabel.setAlignmentX(
+                Component.CENTER_ALIGNMENT
+        );
+
+        confiancaLabel.setFont(
+                new Font(
+                        Font.SANS_SERIF,
+                        Font.PLAIN,
+                        16
+                )
+        );
+
+        confiancaLabel.setAlignmentX(
+                Component.CENTER_ALIGNMENT
+        );
+
+        payoutLabel.setFont(
+                new Font(
+                        Font.SANS_SERIF,
+                        Font.PLAIN,
+                        16
+                )
+        );
+
+        payoutLabel.setAlignmentX(
+                Component.CENTER_ALIGNMENT
+        );
+
+        horarioLabel.setAlignmentX(
+                Component.CENTER_ALIGNMENT
+        );
+
+        painel.add(
+                titulo
+        );
+
+        painel.add(
+                Box.createVerticalStrut(
+                        15
+                )
+        );
+
+        painel.add(
+                statusLabel
+        );
+
+        painel.add(
+                Box.createVerticalStrut(
+                        20
+                )
+        );
+
+        painel.add(
+                ativoLabel
+        );
+
+        painel.add(
+                Box.createVerticalStrut(
+                        10
+                )
+        );
+
+        painel.add(
+                direcaoLabel
+        );
+
+        painel.add(
+                Box.createVerticalStrut(
+                        15
+                )
+        );
+
+        painel.add(
+                confiancaLabel
+        );
+
+        painel.add(
+                Box.createVerticalStrut(
+                        5
+                )
+        );
+
+        painel.add(
+                payoutLabel
+        );
+
+        painel.add(
+                Box.createVerticalStrut(
+                        10
+                )
+        );
+
+        painel.add(
+                horarioLabel
+        );
+
+        setContentPane(
+                painel
+        );
     }
 
     private void iniciarMonitoramento() {
-        Thread thread = new Thread(() -> {
-            while (!Thread.currentThread().isInterrupted()) {
-                try {
-                    consultarSinal();
-                    Thread.sleep(300);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                } catch (Exception e) {
-                    SwingUtilities.invokeLater(() -> statusLabel.setText("Servidor indisponível..."));
-                    try {
-                        Thread.sleep(1500);
-                    } catch (InterruptedException ex) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-                }
-            }
-        }, "SignalReceiver");
 
-        thread.setDaemon(true);
+        Thread thread =
+                new Thread(
+                        () -> {
+
+                            while (
+                                    !Thread
+                                            .currentThread()
+                                            .isInterrupted()
+                            ) {
+
+                                try {
+
+                                    consultarSinal();
+
+                                    Thread.sleep(
+                                            300
+                                    );
+
+                                } catch (
+                                        InterruptedException e
+                                ) {
+
+                                    Thread
+                                            .currentThread()
+                                            .interrupt();
+
+                                    break;
+
+                                } catch (
+                                        Exception e
+                                ) {
+
+                                    mostrarServidorIndisponivel();
+
+                                    try {
+
+                                        Thread.sleep(
+                                                1500
+                                        );
+
+                                    } catch (
+                                            InterruptedException ex
+                                    ) {
+
+                                        Thread
+                                                .currentThread()
+                                                .interrupt();
+
+                                        break;
+                                    }
+                                }
+                            }
+                        },
+                        "SignalReceiver"
+                );
+
+        thread.setDaemon(
+                true
+        );
+
         thread.start();
     }
 
-    private void consultarSinal() throws Exception {
-        HttpURLConnection conexao = (HttpURLConnection) URI.create(URL_SINAL).toURL().openConnection();
-        conexao.setRequestMethod("GET");
-        conexao.setConnectTimeout(1000);
-        conexao.setReadTimeout(1000);
+    private void consultarSinal()
+            throws Exception {
 
-        StringBuilder json = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(conexao.getInputStream(), StandardCharsets.UTF_8))) {
+        /*
+         * Adiciona um valor diferente a cada consulta.
+         *
+         * Isso impede qualquer reaproveitamento
+         * da resposta HTTP anterior.
+         */
+        String url =
+                URL_SINAL
+                        + "?t="
+                        + System.nanoTime();
+
+        HttpURLConnection conexao =
+                (HttpURLConnection)
+                        URI
+                                .create(
+                                        url
+                                )
+                                .toURL()
+                                .openConnection();
+
+        conexao.setUseCaches(
+                false
+        );
+
+        conexao.setDefaultUseCaches(
+                false
+        );
+
+        conexao.setRequestProperty(
+                "Cache-Control",
+                "no-cache, no-store"
+        );
+
+        conexao.setRequestProperty(
+                "Pragma",
+                "no-cache"
+        );
+
+        conexao.setRequestMethod(
+                "GET"
+        );
+
+        conexao.setConnectTimeout(
+                1000
+        );
+
+        conexao.setReadTimeout(
+                1000
+        );
+
+        StringBuilder json =
+                new StringBuilder();
+
+        try (
+                BufferedReader reader =
+                        new BufferedReader(
+                                new InputStreamReader(
+                                        conexao.getInputStream(),
+                                        StandardCharsets.UTF_8
+                                )
+                        )
+        ) {
+
             String linha;
-            while ((linha = reader.readLine()) != null) {
-                json.append(linha);
+
+            while (
+                    (linha = reader.readLine())
+                            != null
+            ) {
+
+                json.append(
+                        linha
+                );
             }
+
         } finally {
+
             conexao.disconnect();
         }
 
-        String resposta = json.toString();
+        String resposta =
+                json.toString();
 
-        if (resposta.contains("\"AGUARDANDO_SINAL\"")) {
+        if (
+                resposta.contains(
+                        "\"AGUARDANDO_SINAL\""
+                )
+        ) {
+
             return;
         }
 
-        long timestamp = extrairLong(resposta, "timestamp");
-        if (timestamp <= 0 || timestamp == ultimoTimestamp) {
+        long timestamp =
+                extrairLong(
+                        resposta,
+                        "timestamp"
+                );
+
+        if (
+                timestamp <= 0
+                        ||
+                        timestamp
+                                == ultimoTimestamp
+        ) {
+
             return;
         }
 
-        ultimoTimestamp = timestamp;
-        ativoAtual = extrairTexto(resposta, "ativo");
-        direcaoAtual = extrairTexto(resposta, "direcao");
-        confiancaAtual = extrairDouble(resposta, "confianca");
-        payoutAtual = extrairDouble(resposta, "payout");
+        String ativo =
+                extrairTexto(
+                        resposta,
+                        "ativo"
+                );
 
-        executarCliquePeloRoboBotao(direcaoAtual);
-        mostrarNovoSinal(ativoAtual, direcaoAtual, confiancaAtual, payoutAtual, timestamp);
+        String direcao =
+                extrairTexto(
+                        resposta,
+                        "direcao"
+                );
+
+        double confianca =
+                extrairDouble(
+                        resposta,
+                        "confianca"
+                );
+
+        double payout =
+                extrairDouble(
+                        resposta,
+                        "payout"
+                );
+
+        /*
+         * Guarda o timestamp somente depois
+         * que todos os campos foram lidos.
+         */
+        ultimoTimestamp =
+                timestamp;
+
+        mostrarNovoSinal(
+                ativo,
+                direcao,
+                confianca,
+                payout,
+                timestamp
+        );
     }
 
-    private void executarCliquePeloRoboBotao(String direcao) {
+    private void mostrarServidorIndisponivel() {
+
+        SwingUtilities.invokeLater(
+                () ->
+                        statusLabel.setText(
+                                "Servidor indisponível..."
+                        )
+        );
+    }
+
+    private void mostrarNovoSinal(
+            String ativo,
+            String direcao,
+            double confianca,
+            double payout,
+            long timestamp
+    ) {
+
+        SwingUtilities.invokeLater(
+                () -> {
+
+                    ativoLabel.setText(
+                            formatarAtivo(
+                                    ativo
+                            )
+                    );
+
+                    direcaoLabel.setText(
+                            direcao
+                    );
+
+                    if (
+                            "PARA CIMA"
+                                    .equalsIgnoreCase(
+                                            direcao
+                                    )
+                    ) {
+
+                        direcaoLabel.setForeground(
+                                new Color(
+                                        0,
+                                        140,
+                                        0
+                                )
+                        );
+
+                    } else if (
+                            "PARA BAIXO"
+                                    .equalsIgnoreCase(
+                                            direcao
+                                    )
+                    ) {
+
+                        direcaoLabel.setForeground(
+                                new Color(
+                                        190,
+                                        0,
+                                        0
+                                )
+                        );
+
+                    } else {
+
+                        direcaoLabel.setForeground(
+                                Color.BLACK
+                        );
+                    }
+
+                    confiancaLabel.setText(
+                            String.format(
+                                    Locale.US,
+                                    "Confiança heurística: %.2f%%",
+                                    confianca
+                            )
+                    );
+
+                    payoutLabel.setText(
+                            String.format(
+                                    Locale.US,
+                                    "Payout: %.0f%%",
+                                    payout
+                            )
+                    );
+
+                    horarioLabel.setText(
+                            "Último sinal: "
+                                    + HORARIO.format(
+                                    Instant.ofEpochMilli(
+                                            timestamp
+                                    )
+                            )
+                    );
+
+                    statusLabel.setText(
+                            "SINAL RECEBIDO"
+                    );
+
+                    Toolkit
+                            .getDefaultToolkit()
+                            .beep();
+
+                    /*
+                     * Se a janela estiver aberta,
+                     * os labels acima são simplesmente
+                     * substituídos pelo sinal atual.
+                     *
+                     * Não cria histórico.
+                     */
+                    if (!isVisible()) {
+
+                        setVisible(
+                                true
+                        );
+                    }
+
+                    repaint();
+                    revalidate();
+                }
+        );
+    }
+
+    private String extrairTexto(
+            String json,
+            String campo
+    ) {
+
+        Matcher matcher =
+                Pattern
+                        .compile(
+                                "\""
+                                        + Pattern.quote(
+                                        campo
+                                )
+                                        + "\"\\s*:\\s*\"([^\"]*)\""
+                        )
+                        .matcher(
+                                json
+                        );
+
+        return matcher.find()
+                ? matcher.group(1)
+                : "";
+    }
+
+    private double extrairDouble(
+            String json,
+            String campo
+    ) {
+
+        Matcher matcher =
+                Pattern
+                        .compile(
+                                "\""
+                                        + Pattern.quote(
+                                        campo
+                                )
+                                        + "\"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)"
+                        )
+                        .matcher(
+                                json
+                        );
+
+        if (!matcher.find()) {
+            return 0;
+        }
+
         try {
-            // Se o seu RoboBotao usar outros nomes de métodos, altere aqui.
-            // Exemplo: se for RoboBotao.clicarCall() / RoboBotao.clicarPut(), ajuste abaixo:
-            if ("PARA CIMA".equalsIgnoreCase(direcao)) {
-                // RoboBotao.clicarCompra(); -> Se der erro, veja qual é o nome exato na classe RoboBotao
-                RoboBotao.clicarCompra();
-            } else if ("PARA BAIXO".equalsIgnoreCase(direcao)) {
-                // RoboBotao.clicarVenda(); -> Se der erro, veja qual é o nome exato na classe RoboBotao
-                RoboBotao.clicarVenda();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+
+            return Double.parseDouble(
+                    matcher.group(1)
+            );
+
+        } catch (
+                NumberFormatException e
+        ) {
+
+            return 0;
         }
     }
 
-    private void mostrarNovoSinal(String ativo, String direcao, double confianca, double payout, long timestamp) {
-        SwingUtilities.invokeLater(() -> {
-            ativoLabel.setText(formatarAtivo(ativo));
-            direcaoLabel.setText(direcao);
+    private long extrairLong(
+            String json,
+            String campo
+    ) {
 
-            if ("PARA CIMA".equalsIgnoreCase(direcao)) {
-                direcaoLabel.setForeground(new Color(0, 140, 0));
-            } else if ("PARA BAIXO".equalsIgnoreCase(direcao)) {
-                direcaoLabel.setForeground(new Color(190, 0, 0));
-            } else {
-                direcaoLabel.setForeground(Color.BLACK);
-            }
+        Matcher matcher =
+                Pattern
+                        .compile(
+                                "\""
+                                        + Pattern.quote(
+                                        campo
+                                )
+                                        + "\"\\s*:\\s*(\\d+)"
+                        )
+                        .matcher(
+                                json
+                        );
 
-            confiancaLabel.setText(String.format(Locale.US, "Confiança heurística: %.2f%%", confianca));
-            payoutLabel.setText(String.format(Locale.US, "Payout: %.0f%%", payout));
-            horarioLabel.setText("Timestamp: " + timestamp);
-            statusLabel.setText("⚡ ORDEM EXECUTADA PELO ROBÔ");
-
-            Toolkit.getDefaultToolkit().beep();
-
-            if (!isVisible()) {
-                setVisible(true);
-            }
-        });
-    }
-
-    private String extrairTexto(String json, String campo) {
-        Matcher matcher = Pattern.compile("\"" + Pattern.quote(campo) + "\"\\s*:\\s*\"([^\"]*)\"").matcher(json);
-        return matcher.find() ? matcher.group(1) : "";
-    }
-
-    private double extrairDouble(String json, String campo) {
-        Matcher matcher = Pattern.compile("\"" + Pattern.quote(campo) + "\"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)").matcher(json);
-        return matcher.find() ? Double.parseDouble(matcher.group(1)) : 0;
-    }
-
-    private long extrairLong(String json, String campo) {
-        Matcher matcher = Pattern.compile("\"" + Pattern.quote(campo) + "\"\\s*:\\s*(\\d+)").matcher(json);
-        return matcher.find() ? Long.parseLong(matcher.group(1)) : -1;
-    }
-
-    private String formatarAtivo(String ativo) {
-        if (ativo == null || ativo.isBlank()) return "---";
-        String s = ativo.trim();
-        boolean otc = s.toLowerCase(Locale.ROOT).endsWith("_otc");
-        if (otc) s = s.substring(0, s.length() - 4);
-        if (s.length() == 6 && s.chars().allMatch(Character::isLetter)) {
-            s = s.substring(0, 3) + "/" + s.substring(3);
+        if (!matcher.find()) {
+            return -1;
         }
-        return otc ? s + " OTC" : s;
+
+        try {
+
+            return Long.parseLong(
+                    matcher.group(1)
+            );
+
+        } catch (
+                NumberFormatException e
+        ) {
+
+            return -1;
+        }
+    }
+
+    private String formatarAtivo(
+            String ativo
+    ) {
+
+        if (
+                ativo == null
+                        ||
+                        ativo.isBlank()
+        ) {
+
+            return "---";
+        }
+
+        String texto =
+                ativo.trim();
+
+        boolean otc =
+                texto
+                        .toLowerCase(
+                                Locale.ROOT
+                        )
+                        .endsWith(
+                                "_otc"
+                        );
+
+        if (otc) {
+
+            texto =
+                    texto.substring(
+                            0,
+                            texto.length() - 4
+                    );
+        }
+
+        if (
+                texto.length() == 6
+                        &&
+                        texto
+                                .chars()
+                                .allMatch(
+                                        Character::isLetter
+                                )
+        ) {
+
+            texto =
+                    texto.substring(
+                            0,
+                            3
+                    )
+                            + "/"
+                            + texto.substring(
+                            3
+                    );
+        }
+
+        return otc
+                ? texto + " OTC"
+                : texto;
     }
 
     public static void abrir() {
-        SwingUtilities.invokeLater(() -> new SignalReceiverWindow().setVisible(true));
+
+        SwingUtilities.invokeLater(
+                () ->
+                        new SignalReceiverWindow()
+                                .setVisible(
+                                        true
+                                )
+        );
     }
 }

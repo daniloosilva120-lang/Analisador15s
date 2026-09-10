@@ -1,2 +1,8 @@
 package com.d4niboy.analisador;
-public record Signal(String direcao, double confianca, String motivo) {}
+
+public record Signal(
+        String direcao,
+        double confianca,
+        String motivo
+) {
+}

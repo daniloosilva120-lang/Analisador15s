@@ -5,16 +5,22 @@ import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeDriverService;
 import org.openqa.selenium.chrome.ChromeOptions;
+
+import java.io.File;
 
 public class RoboBotao {
 
+    private static final String CHROMEDRIVER_PATH =
+            "C:\\Users\\Engenharia\\.cache\\selenium\\chromedriver\\win64\\151.0.7922.138\\chromedriver.exe";
+
     private static WebDriver navegador;
 
-    private static final String xpathCima =
+    private static final String XPATH_CIMA =
             "//span[normalize-space()='Para cima']/ancestor::button";
 
-    private static final String xpathBaixo =
+    private static final String XPATH_BAIXO =
             "//span[normalize-space()='Para baixo']/ancestor::button";
 
     public RoboBotao() {
@@ -22,40 +28,101 @@ public class RoboBotao {
     }
 
     private static synchronized void conectar() {
-        if (navegador != null) return;
-        System.out.println("[RoboBotao] Tentando conectar ao Chrome especial...");
+
+        if (navegador != null) {
+            return;
+        }
+
         try {
-            ChromeOptions opcoes = new ChromeOptions();
-            opcoes.setExperimentalOption("debuggerAddress", "localhost:9222");
-            navegador = new ChromeDriver(opcoes);
-            System.out.println("[RoboBotao] Conectado ao Chrome com sucesso.");
+
+            ChromeOptions opcoes =
+                    new ChromeOptions();
+
+            opcoes.setExperimentalOption(
+                    "debuggerAddress",
+                    "127.0.0.1:9222"
+            );
+
+            ChromeDriverService servico =
+                    new ChromeDriverService.Builder()
+                            .usingDriverExecutable(
+                                    new File(
+                                            CHROMEDRIVER_PATH
+                                    )
+                            )
+                            .build();
+
+            navegador =
+                    new ChromeDriver(
+                            servico,
+                            opcoes
+                    );
+
             removerDestaque();
+
         } catch (Exception e) {
+
             navegador = null;
-            System.out.println("[RoboBotao] Não foi possível conectar ao Chrome.");
-            System.out.println("[RoboBotao] Abra primeiro o INICIAR_CHROME.bat.");
+
+            System.err.println(
+                    "ERRO: Não foi possível conectar ao Chrome especial."
+            );
+
+            System.err.println(
+                    "Abra primeiro o INICIAR_CHROME.bat."
+            );
         }
     }
 
-    // Métodos de compatibilidade exigidos pelas janelas e feeders
-    public static synchronized void receberSinal(String direcao) {
-        if (direcao == null) {
+    public static synchronized void receberSinal(
+            String direcao
+    ) {
+
+        if (
+                direcao == null
+                        ||
+                        direcao.isBlank()
+        ) {
             return;
         }
+
         if (navegador == null) {
             conectar();
         }
 
-        if (direcao.equalsIgnoreCase("PARA CIMA") || direcao.equalsIgnoreCase("CIMA") || direcao.equalsIgnoreCase("CALL") || direcao.equalsIgnoreCase("COMPRA")) {
+        if (
+                direcao.equalsIgnoreCase("PARA CIMA")
+                        ||
+                        direcao.equalsIgnoreCase("CIMA")
+                        ||
+                        direcao.equalsIgnoreCase("CALL")
+                        ||
+                        direcao.equalsIgnoreCase("COMPRA")
+        ) {
+
             clicarCima();
-        } else if (direcao.equalsIgnoreCase("PARA BAIXO") || direcao.equalsIgnoreCase("BAIXO") || direcao.equalsIgnoreCase("PUT") || direcao.equalsIgnoreCase("VENDA")) {
+
+        } else if (
+                direcao.equalsIgnoreCase("PARA BAIXO")
+                        ||
+                        direcao.equalsIgnoreCase("BAIXO")
+                        ||
+                        direcao.equalsIgnoreCase("PUT")
+                        ||
+                        direcao.equalsIgnoreCase("VENDA")
+        ) {
+
             clicarBaixo();
+
         } else {
-            System.out.println("⚠️ [RoboBotao] Direção desconhecida recebida: " + direcao);
+
+            System.err.println(
+                    "ERRO: Direção desconhecida recebida: "
+                            + direcao
+            );
         }
     }
 
-    // Atalhos para compatibilidade com SignalReceiverWindow (clicarCompra / clicarVenda)
     public static synchronized void clicarCompra() {
         clicarCima();
     }
@@ -65,75 +132,157 @@ public class RoboBotao {
     }
 
     public static synchronized void clicarCima() {
-        System.out.println("\n🤖 [RoboBotao] Executando ordem: PARA CIMA");
-        if (navegador == null) {
-            conectar();
-            if (navegador == null) {
-                System.out.println("[RoboBotao] Chrome não conectado.");
-                return;
-            }
+
+        if (!garantirConexao()) {
+            return;
         }
+
         removerDestaque();
+
         try {
-            WebElement botao = navegador.findElement(By.xpath(xpathCima));
-            destacar(botao);
+
+            WebElement botao =
+                    navegador.findElement(
+                            By.xpath(
+                                    XPATH_CIMA
+                            )
+                    );
+
+            destacar(
+                    botao
+            );
+
             botao.click();
-            System.out.println("🟢 [RoboBotao] Clique em PARA CIMA efetuado com sucesso!");
+
         } catch (Exception e) {
-            System.out.println("❌ [RoboBotao] Não encontrei ou não consegui clicar no botão PARA CIMA.");
+
+            System.err.println(
+                    "ERRO: Não foi possível clicar em PARA CIMA."
+            );
         }
     }
 
     public static synchronized void clicarBaixo() {
-        System.out.println("\n🤖 [RoboBotao] Executando ordem: PARA BAIXO");
-        if (navegador == null) {
-            conectar();
-            if (navegador == null) {
-                System.out.println("[RoboBotao] Chrome não conectado.");
-                return;
-            }
+
+        if (!garantirConexao()) {
+            return;
         }
+
         removerDestaque();
+
         try {
-            WebElement botao = navegador.findElement(By.xpath(xpathBaixo));
-            destacar(botao);
+
+            WebElement botao =
+                    navegador.findElement(
+                            By.xpath(
+                                    XPATH_BAIXO
+                            )
+                    );
+
+            destacar(
+                    botao
+            );
+
             botao.click();
-            System.out.println("🔴 [RoboBotao] Clique em PARA BAIXO efetuado com sucesso!");
+
         } catch (Exception e) {
-            System.out.println("❌ [RoboBotao] Não encontrei ou não consegui clicar no botão PARA BAIXO.");
+
+            System.err.println(
+                    "ERRO: Não foi possível clicar em PARA BAIXO."
+            );
         }
     }
 
-    private static void destacar(WebElement elemento) {
+    private static boolean garantirConexao() {
+
+        if (navegador != null) {
+            return true;
+        }
+
+        conectar();
+
+        if (navegador == null) {
+
+            System.err.println(
+                    "ERRO: Chrome especial não conectado."
+            );
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private static void destacar(
+            WebElement elemento
+    ) {
+
+        if (
+                navegador == null
+                        ||
+                        elemento == null
+        ) {
+            return;
+        }
+
         try {
-            JavascriptExecutor js = (JavascriptExecutor) navegador;
+
+            JavascriptExecutor js =
+                    (JavascriptExecutor) navegador;
+
             js.executeScript(
                     """
-                    arguments[0].setAttribute('data-robo-botao-destaque', 'true');
-                    arguments[0].style.outline = '5px solid yellow';
-                    arguments[0].style.outlineOffset = '4px';
-                    arguments[0].style.boxShadow = '0 0 20px yellow';
+                    arguments[0].setAttribute(
+                        'data-robo-botao-destaque',
+                        'true'
+                    );
+
+                    arguments[0].style.outline =
+                        '5px solid yellow';
+
+                    arguments[0].style.outlineOffset =
+                        '4px';
+
+                    arguments[0].style.boxShadow =
+                        '0 0 20px yellow';
                     """,
                     elemento
             );
+
         } catch (Exception ignored) {
         }
     }
 
     public static synchronized void removerDestaque() {
-        if (navegador == null) return;
+
+        if (navegador == null) {
+            return;
+        }
+
         try {
-            JavascriptExecutor js = (JavascriptExecutor) navegador;
+
+            JavascriptExecutor js =
+                    (JavascriptExecutor) navegador;
+
             js.executeScript(
                     """
-                    document.querySelectorAll('[data-robo-botao-destaque="true"]').forEach(function(el) {
-                        el.style.outline = '';
-                        el.style.outlineOffset = '';
-                        el.style.boxShadow = '';
-                        el.removeAttribute('data-robo-botao-destaque');
-                    });
+                    document
+                        .querySelectorAll(
+                            '[data-robo-botao-destaque="true"]'
+                        )
+                        .forEach(function(el) {
+
+                            el.style.outline = '';
+                            el.style.outlineOffset = '';
+                            el.style.boxShadow = '';
+
+                            el.removeAttribute(
+                                'data-robo-botao-destaque'
+                            );
+                        });
                     """
             );
+
         } catch (Exception ignored) {
         }
     }

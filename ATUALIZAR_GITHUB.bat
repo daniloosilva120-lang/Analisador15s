@@ -23,7 +23,7 @@ if errorlevel 1 (
     echo ERRO: Esta pasta nao e um repositorio Git.
     echo.
     pause
-    exit /b
+    exit /b 1
 )
 
 echo.
@@ -34,27 +34,40 @@ git add .
 git diff --cached --quiet
 
 if errorlevel 1 (
-    echo.
-    set /p mensagem=Digite a descricao da atualizacao: 
 
-    if "!mensagem!"=="" set "mensagem=Atualizacao do projeto"
+    echo.
+
+    set "mensagem="
+
+    set /p "mensagem=Digite a descricao da atualizacao: "
+
+    if "!mensagem!"=="" (
+        set "mensagem=Atualizacao do projeto"
+    )
 
     echo.
     echo Salvando alteracoes locais...
+
     git commit -m "!mensagem!"
 
     if errorlevel 1 (
         echo.
-        echo ERRO AO CRIAR COMMIT.
+        echo ============================================
+        echo ERRO AO CRIAR COMMIT
+        echo ============================================
+        echo.
         pause
-        exit /b
+        exit /b 1
     )
+
 ) else (
+
     echo Nenhuma alteracao local para salvar.
 )
 
 echo.
 echo Baixando atualizacoes do GitHub...
+
 git pull --rebase origin master
 
 if errorlevel 1 (
@@ -64,15 +77,16 @@ if errorlevel 1 (
     echo ============================================
     echo.
     echo Pode existir conflito entre arquivos.
-    echo Nao foi feito o push.
+    echo O push nao foi realizado.
     echo.
     pause
-    exit /b
+    exit /b 1
 )
 
 echo.
 echo Enviando projeto para o GitHub...
-git push origin master
+
+git push -u origin master
 
 if errorlevel 1 (
     echo.
@@ -81,7 +95,7 @@ if errorlevel 1 (
     echo ============================================
     echo.
     pause
-    exit /b
+    exit /b 1
 )
 
 echo.
@@ -91,3 +105,5 @@ echo ============================================
 echo.
 
 pause
+
+endlocal
