@@ -24,9 +24,9 @@ import java.util.regex.Pattern;
 
 public class RealTimeFeed {
 
-    // --- INSTÂNCIA DO ROBÔ ADICIONADA AQUI ---
+    // --- INSTÂNCIA DO ROBÔ ---
     private final RoboBotao roboBotao = new RoboBotao();
-    // -----------------------------------------
+    // -------------------------
 
     private final QuoteStream quoteStream = new QuoteStream();
     private CandleBuilder15s candleBuilder = new CandleBuilder15s();
@@ -60,7 +60,7 @@ public class RealTimeFeed {
         System.out.println("Detecção do gráfico selecionado ativada.");
         System.out.println("O programa seguirá somente o ativo que está visível.\n");
         System.out.println("Leitura automática de payout ativada.\n");
-        System.out.println("RoboBotao em modo assistido: recebe sinais e apenas destaca a direção no Chrome.\n");
+        System.out.println("RoboBotao configurado para enviar todas as entradas automaticamente.\n");
         conectar();
     }
 
@@ -353,8 +353,6 @@ public class RealTimeFeed {
 
         String texto = desserializarJson(value.group(1));
 
-        System.out.println("[DEBUG DOM] " + texto);
-
         if (texto == null || texto.isBlank()) {
             return;
         }
@@ -492,22 +490,10 @@ public class RealTimeFeed {
                         SignalHttpServer.publicarSinal(q.ativo(), sinal.direcao(), sinal.confianca(), payoutAtual.doubleValue());
                         paperTracker.abrir(q.ativo(), sinal.direcao(), q.preco(), sinal.confianca(), payoutAtual.doubleValue());
 
-                        // --- ENVIO DO SINAL PARA O ROBÔ EM MODO ASSISTIDO ---
-                        if (SignalReceiverWindow.isAutoClickAtivo()) {
-                            System.out.println(
-                                    "🤖 RoboBotao ativado. Enviando sinal: " +
-                                            sinal.direcao()
-                            );
-
-                            roboBotao.receberSinal(
-                                    sinal.direcao()
-                            );
-                        } else {
-                            System.out.println(
-                                    "🤖 RoboBotao pausado. Ação manual requerida."
-                            );
-                        }
-                        // ---------------------------------------------------
+                        // --- ENVIO AUTOMÁTICO DE TODAS AS ENTRADAS PARA O ROBÔ ---
+                        System.out.println("🤖 Enviando ordem automática para o RoboBotao: " + sinal.direcao());
+                        roboBotao.receberSinal(sinal.direcao());
+                        // --------------------------------------------------------
                     } else {
                         System.out.println("⚠ Entrada ignorada: payout não identificado.");
                     }
