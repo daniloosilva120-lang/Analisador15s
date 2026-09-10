@@ -9,19 +9,20 @@ import org.openqa.selenium.chrome.ChromeOptions;
 
 public class RoboBotao {
 
-    private WebDriver navegador;
+    private static WebDriver navegador;
 
-    private final String xpathCima =
+    private static final String xpathCima =
             "//span[normalize-space()='Para cima']/ancestor::button";
 
-    private final String xpathBaixo =
+    private static final String xpathBaixo =
             "//span[normalize-space()='Para baixo']/ancestor::button";
 
     public RoboBotao() {
         conectar();
     }
 
-    private void conectar() {
+    private static synchronized void conectar() {
+        if (navegador != null) return;
         System.out.println("[RoboBotao] Tentando conectar ao Chrome especial...");
         try {
             ChromeOptions opcoes = new ChromeOptions();
@@ -36,57 +37,74 @@ public class RoboBotao {
         }
     }
 
-    // Método exigido pelo RealTimeFeed
-    public synchronized void receberSinal(String direcao) {
+    // Métodos de compatibilidade exigidos pelas janelas e feeders
+    public static synchronized void receberSinal(String direcao) {
         if (direcao == null) {
             return;
         }
+        if (navegador == null) {
+            conectar();
+        }
 
-        if (direcao.equalsIgnoreCase("CIMA") || direcao.equalsIgnoreCase("CALL") || direcao.equalsIgnoreCase("COMPRA")) {
+        if (direcao.equalsIgnoreCase("PARA CIMA") || direcao.equalsIgnoreCase("CIMA") || direcao.equalsIgnoreCase("CALL") || direcao.equalsIgnoreCase("COMPRA")) {
             clicarCima();
-        } else if (direcao.equalsIgnoreCase("BAIXO") || direcao.equalsIgnoreCase("PUT") || direcao.equalsIgnoreCase("VENDA")) {
+        } else if (direcao.equalsIgnoreCase("PARA BAIXO") || direcao.equalsIgnoreCase("BAIXO") || direcao.equalsIgnoreCase("PUT") || direcao.equalsIgnoreCase("VENDA")) {
             clicarBaixo();
         } else {
             System.out.println("⚠️ [RoboBotao] Direção desconhecida recebida: " + direcao);
         }
     }
 
-    // Métodos chamados pelo RealTimeFeed
-    public synchronized void clicarCima() {
+    // Atalhos para compatibilidade com SignalReceiverWindow (clicarCompra / clicarVenda)
+    public static synchronized void clicarCompra() {
+        clicarCima();
+    }
+
+    public static synchronized void clicarVenda() {
+        clicarBaixo();
+    }
+
+    public static synchronized void clicarCima() {
         System.out.println("\n🤖 [RoboBotao] Executando ordem: PARA CIMA");
         if (navegador == null) {
-            System.out.println("[RoboBotao] Chrome não conectado.");
-            return;
+            conectar();
+            if (navegador == null) {
+                System.out.println("[RoboBotao] Chrome não conectado.");
+                return;
+            }
         }
         removerDestaque();
         try {
             WebElement botao = navegador.findElement(By.xpath(xpathCima));
             destacar(botao);
-            botao.click(); // <--- Clique real no botão da corretora
+            botao.click();
             System.out.println("🟢 [RoboBotao] Clique em PARA CIMA efetuado com sucesso!");
         } catch (Exception e) {
             System.out.println("❌ [RoboBotao] Não encontrei ou não consegui clicar no botão PARA CIMA.");
         }
     }
 
-    public synchronized void clicarBaixo() {
+    public static synchronized void clicarBaixo() {
         System.out.println("\n🤖 [RoboBotao] Executando ordem: PARA BAIXO");
         if (navegador == null) {
-            System.out.println("[RoboBotao] Chrome não conectado.");
-            return;
+            conectar();
+            if (navegador == null) {
+                System.out.println("[RoboBotao] Chrome não conectado.");
+                return;
+            }
         }
         removerDestaque();
         try {
             WebElement botao = navegador.findElement(By.xpath(xpathBaixo));
             destacar(botao);
-            botao.click(); // <--- Clique real no botão da corretora
+            botao.click();
             System.out.println("🔴 [RoboBotao] Clique em PARA BAIXO efetuado com sucesso!");
         } catch (Exception e) {
             System.out.println("❌ [RoboBotao] Não encontrei ou não consegui clicar no botão PARA BAIXO.");
         }
     }
 
-    private void destacar(WebElement elemento) {
+    private static void destacar(WebElement elemento) {
         try {
             JavascriptExecutor js = (JavascriptExecutor) navegador;
             js.executeScript(
@@ -102,7 +120,7 @@ public class RoboBotao {
         }
     }
 
-    public synchronized void removerDestaque() {
+    public static synchronized void removerDestaque() {
         if (navegador == null) return;
         try {
             JavascriptExecutor js = (JavascriptExecutor) navegador;

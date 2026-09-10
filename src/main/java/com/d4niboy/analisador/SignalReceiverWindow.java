@@ -3,7 +3,6 @@ package com.d4niboy.analisador;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.InputEvent;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -17,18 +16,8 @@ public class SignalReceiverWindow extends JFrame {
 
     private static final String URL_SINAL = "http://127.0.0.1:8765/sinal";
 
-    // ==========================================
-    // CONFIGURAÇÃO DE COORDENADAS PARA O CLIQUE NA TELA
-    // (Ajuste X e Y se necessário para o botão da sua corretora)
-    // ==========================================
-    private static final int COMPRA_X = 1200;
-    private static final int COMPRA_Y = 450;
-
-    private static final int VENDA_X = 1200;
-    private static final int VENDA_Y = 520;
-
     private final JLabel statusLabel =
-            new JLabel("OPERANDO 100% AUTOMÁTICO", SwingConstants.CENTER);
+            new JLabel("AGUARDANDO SINAL DO ROBÔ...", SwingConstants.CENTER);
 
     private final JLabel ativoLabel =
             new JLabel("---", SwingConstants.CENTER);
@@ -50,18 +39,9 @@ public class SignalReceiverWindow extends JFrame {
     private volatile String direcaoAtual = null;
     private volatile double confiancaAtual = 0;
     private volatile double payoutAtual = 0;
-    private volatile long timestampAtual = -1;
-
-    private Robot robot;
 
     public SignalReceiverWindow() {
-        super("Analisador15s - Monitor Automático");
-        try {
-            this.robot = new Robot();
-            this.robot.setAutoDelay(50);
-        } catch (AWTException e) {
-            e.printStackTrace();
-        }
+        super("Analisador15s - Robô Automático");
         configurarJanela();
         iniciarMonitoramento();
     }
@@ -172,24 +152,21 @@ public class SignalReceiverWindow extends JFrame {
         direcaoAtual = extrairTexto(resposta, "direcao");
         confiancaAtual = extrairDouble(resposta, "confianca");
         payoutAtual = extrairDouble(resposta, "payout");
-        timestampAtual = timestamp;
 
-        executarCliqueAutomatico(direcaoAtual);
+        executarCliquePeloRoboBotao(direcaoAtual);
         mostrarNovoSinal(ativoAtual, direcaoAtual, confiancaAtual, payoutAtual, timestamp);
     }
 
-    private void executarCliqueAutomatico(String direcao) {
-        if (robot == null) return;
-
+    private void executarCliquePeloRoboBotao(String direcao) {
         try {
+            // Se o seu RoboBotao usar outros nomes de métodos, altere aqui.
+            // Exemplo: se for RoboBotao.clicarCall() / RoboBotao.clicarPut(), ajuste abaixo:
             if ("PARA CIMA".equalsIgnoreCase(direcao)) {
-                robot.mouseMove(COMPRA_X, COMPRA_Y);
-                robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
-                robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+                // RoboBotao.clicarCompra(); -> Se der erro, veja qual é o nome exato na classe RoboBotao
+                RoboBotao.clicarCompra();
             } else if ("PARA BAIXO".equalsIgnoreCase(direcao)) {
-                robot.mouseMove(VENDA_X, VENDA_Y);
-                robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
-                robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+                // RoboBotao.clicarVenda(); -> Se der erro, veja qual é o nome exato na classe RoboBotao
+                RoboBotao.clicarVenda();
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -212,7 +189,7 @@ public class SignalReceiverWindow extends JFrame {
             confiancaLabel.setText(String.format(Locale.US, "Confiança heurística: %.2f%%", confianca));
             payoutLabel.setText(String.format(Locale.US, "Payout: %.0f%%", payout));
             horarioLabel.setText("Timestamp: " + timestamp);
-            statusLabel.setText("⚡ CLIQUE AUTOMÁTICO EXECUTADO");
+            statusLabel.setText("⚡ ORDEM EXECUTADA PELO ROBÔ");
 
             Toolkit.getDefaultToolkit().beep();
 
@@ -241,9 +218,7 @@ public class SignalReceiverWindow extends JFrame {
         if (ativo == null || ativo.isBlank()) return "---";
         String s = ativo.trim();
         boolean otc = s.toLowerCase(Locale.ROOT).endsWith("_otc");
-        if (otc) {
-            s = s.substring(0, s.length() - 4);
-        }
+        if (otc) s = s.substring(0, s.length() - 4);
         if (s.length() == 6 && s.chars().allMatch(Character::isLetter)) {
             s = s.substring(0, 3) + "/" + s.substring(3);
         }
