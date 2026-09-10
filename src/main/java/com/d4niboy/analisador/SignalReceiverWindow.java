@@ -3,6 +3,7 @@ package com.d4niboy.analisador;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.InputEvent;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -15,6 +16,16 @@ import java.util.regex.Pattern;
 public class SignalReceiverWindow extends JFrame {
 
     private static final String URL_SINAL = "http://127.0.0.1:8765/sinal";
+
+    // ==========================================
+    // CONFIGURAÇÃO DE COORDENADAS PARA O CLIQUE NA TELA
+    // (Ajuste X e Y se necessário para o botão da sua corretora)
+    // ==========================================
+    private static final int COMPRA_X = 1200;
+    private static final int COMPRA_Y = 450;
+
+    private static final int VENDA_X = 1200;
+    private static final int VENDA_Y = 520;
 
     private final JLabel statusLabel =
             new JLabel("OPERANDO 100% AUTOMÁTICO", SwingConstants.CENTER);
@@ -41,8 +52,16 @@ public class SignalReceiverWindow extends JFrame {
     private volatile double payoutAtual = 0;
     private volatile long timestampAtual = -1;
 
+    private Robot robot;
+
     public SignalReceiverWindow() {
         super("Analisador15s - Monitor Automático");
+        try {
+            this.robot = new Robot();
+            this.robot.setAutoDelay(50);
+        } catch (AWTException e) {
+            e.printStackTrace();
+        }
         configurarJanela();
         iniciarMonitoramento();
     }
@@ -101,7 +120,7 @@ public class SignalReceiverWindow extends JFrame {
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     consultarSinal();
-                    Thread.sleep(500);
+                    Thread.sleep(300);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
@@ -155,7 +174,26 @@ public class SignalReceiverWindow extends JFrame {
         payoutAtual = extrairDouble(resposta, "payout");
         timestampAtual = timestamp;
 
+        executarCliqueAutomatico(direcaoAtual);
         mostrarNovoSinal(ativoAtual, direcaoAtual, confiancaAtual, payoutAtual, timestamp);
+    }
+
+    private void executarCliqueAutomatico(String direcao) {
+        if (robot == null) return;
+
+        try {
+            if ("PARA CIMA".equalsIgnoreCase(direcao)) {
+                robot.mouseMove(COMPRA_X, COMPRA_Y);
+                robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+                robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+            } else if ("PARA BAIXO".equalsIgnoreCase(direcao)) {
+                robot.mouseMove(VENDA_X, VENDA_Y);
+                robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+                robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void mostrarNovoSinal(String ativo, String direcao, double confianca, double payout, long timestamp) {
@@ -174,7 +212,7 @@ public class SignalReceiverWindow extends JFrame {
             confiancaLabel.setText(String.format(Locale.US, "Confiança heurística: %.2f%%", confianca));
             payoutLabel.setText(String.format(Locale.US, "Payout: %.0f%%", payout));
             horarioLabel.setText("Timestamp: " + timestamp);
-            statusLabel.setText("ORDEM EXECUTADA");
+            statusLabel.setText("⚡ CLIQUE AUTOMÁTICO EXECUTADO");
 
             Toolkit.getDefaultToolkit().beep();
 
