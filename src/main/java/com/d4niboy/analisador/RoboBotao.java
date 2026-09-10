@@ -1,63 +1,126 @@
 package com.d4niboy.analisador;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
-import java.util.Scanner; // Import necessário para ler o teclado
 
 public class RoboBotao {
-    public static void main(String[] args) {
-        System.out.println("Iniciando conexão com o Chrome especial...");
 
+    private WebDriver navegador;
+
+    private final String xpathCima =
+            "//span[normalize-space()='Para cima']/ancestor::button";
+
+    private final String xpathBaixo =
+            "//span[normalize-space()='Para baixo']/ancestor::button";
+
+    public RoboBotao() {
+        conectar();
+    }
+
+    private void conectar() {
+        System.out.println("[RoboBotao] Tentando conectar ao Chrome especial...");
         try {
-            // Conecta ao Chrome do .bat
             ChromeOptions opcoes = new ChromeOptions();
             opcoes.setExperimentalOption("debuggerAddress", "localhost:9222");
-            WebDriver navegador = new ChromeDriver(opcoes);
-
-            System.out.println("Conectado com sucesso!");
-
-            // XPaths inteligentes baseados nas suas imagens
-            String xpathCima = "//span[text()='Para cima']/ancestor::button";
-            String xpathBaixo = "//span[text()='Para baixo']/ancestor::button";
-
-            // Prepara o leitor do terminal
-            Scanner scanner = new Scanner(System.in);
-
-            System.out.println("\n======================================");
-            System.out.println("ROBÔ PRONTO! Comandos:");
-            System.out.println("Digite 1 + Enter para CIMA (Verde)");
-            System.out.println("Digite 2 + Enter para BAIXO (Vermelho)");
-            System.out.println("======================================");
-
-            // Loop infinito para manter o programa rodando
-            while (true) {
-                System.out.print("\nAguardando comando (1 ou 2): ");
-                String comando = scanner.nextLine();
-
-                try {
-                    if (comando.equals("1")) {
-                        WebElement botaoCima = navegador.findElement(By.xpath(xpathCima));
-                        botaoCima.click();
-                        System.out.println("✅ Ordem enviada: PARA CIMA!");
-                    }
-                    else if (comando.equals("2")) {
-                        WebElement botaoBaixo = navegador.findElement(By.xpath(xpathBaixo));
-                        botaoBaixo.click();
-                        System.out.println("🔻 Ordem enviada: PARA BAIXO!");
-                    }
-                    else {
-                        System.out.println("Comando inválido. Digite 1 para Cima ou 2 para Baixo.");
-                    }
-                } catch (Exception e) {
-                    System.out.println("❌ Erro: Não encontrei o botão. A tela da corretora está visível?");
-                }
-            }
-
+            navegador = new ChromeDriver(opcoes);
+            System.out.println("[RoboBotao] Conectado ao Chrome com sucesso.");
+            removerDestaque();
         } catch (Exception e) {
-            System.out.println("Falha de conexão. Verifique se o .bat está rodando.");
+            navegador = null;
+            System.out.println("[RoboBotao] Não foi possível conectar ao Chrome.");
+            System.out.println("[RoboBotao] Abra primeiro o INICIAR_CHROME.bat.");
         }
+    }
+
+    // Método exigido pelo RealTimeFeed
+    public synchronized void receberSinal(String direcao) {
+        if (direcao == null) {
+            return;
+        }
+
+        if (direcao.equalsIgnoreCase("CIMA") || direcao.equalsIgnoreCase("CALL") || direcao.equalsIgnoreCase("COMPRA")) {
+            clicarCima();
+        } else if (direcao.equalsIgnoreCase("BAIXO") || direcao.equalsIgnoreCase("PUT") || direcao.equalsIgnoreCase("VENDA")) {
+            clicarBaixo();
+        } else {
+            System.out.println("⚠️ [RoboBotao] Direção desconhecida recebida: " + direcao);
+        }
+    }
+
+    // Métodos chamados pelo RealTimeFeed
+    public synchronized void clicarCima() {
+        System.out.println("\n🤖 [RoboBotao] Executando ordem: PARA CIMA");
+        if (navegador == null) {
+            System.out.println("[RoboBotao] Chrome não conectado.");
+            return;
+        }
+        removerDestaque();
+        try {
+            WebElement botao = navegador.findElement(By.xpath(xpathCima));
+            destacar(botao);
+            botao.click(); // <--- Clique real no botão da corretora
+            System.out.println("🟢 [RoboBotao] Clique em PARA CIMA efetuado com sucesso!");
+        } catch (Exception e) {
+            System.out.println("❌ [RoboBotao] Não encontrei ou não consegui clicar no botão PARA CIMA.");
+        }
+    }
+
+    public synchronized void clicarBaixo() {
+        System.out.println("\n🤖 [RoboBotao] Executando ordem: PARA BAIXO");
+        if (navegador == null) {
+            System.out.println("[RoboBotao] Chrome não conectado.");
+            return;
+        }
+        removerDestaque();
+        try {
+            WebElement botao = navegador.findElement(By.xpath(xpathBaixo));
+            destacar(botao);
+            botao.click(); // <--- Clique real no botão da corretora
+            System.out.println("🔴 [RoboBotao] Clique em PARA BAIXO efetuado com sucesso!");
+        } catch (Exception e) {
+            System.out.println("❌ [RoboBotao] Não encontrei ou não consegui clicar no botão PARA BAIXO.");
+        }
+    }
+
+    private void destacar(WebElement elemento) {
+        try {
+            JavascriptExecutor js = (JavascriptExecutor) navegador;
+            js.executeScript(
+                    """
+                    arguments[0].setAttribute('data-robo-botao-destaque', 'true');
+                    arguments[0].style.outline = '5px solid yellow';
+                    arguments[0].style.outlineOffset = '4px';
+                    arguments[0].style.boxShadow = '0 0 20px yellow';
+                    """,
+                    elemento
+            );
+        } catch (Exception ignored) {
+        }
+    }
+
+    public synchronized void removerDestaque() {
+        if (navegador == null) return;
+        try {
+            JavascriptExecutor js = (JavascriptExecutor) navegador;
+            js.executeScript(
+                    """
+                    document.querySelectorAll('[data-robo-botao-destaque="true"]').forEach(function(el) {
+                        el.style.outline = '';
+                        el.style.outlineOffset = '';
+                        el.style.boxShadow = '';
+                        el.removeAttribute('data-robo-botao-destaque');
+                    });
+                    """
+            );
+        } catch (Exception ignored) {
+        }
+    }
+
+    public boolean estaConectado() {
+        return navegador != null;
     }
 }

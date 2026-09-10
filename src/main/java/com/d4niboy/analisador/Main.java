@@ -7,72 +7,36 @@ public class Main {
         // ========================================
         // SERVIDOR LOCAL DE SINAIS
         // ========================================
-
         SignalHttpServer.iniciar();
-
 
         // ========================================
         // JANELA RECEPTORA DE SINAIS
         // ========================================
-
         SignalReceiverWindow.abrir();
-
 
         // ========================================
         // INÍCIO DO ANALISADOR
         // ========================================
-
-        System.out.println(
-                "========================================"
-        );
-
-        System.out.println(
-                "   ANALISADOR 15s - DADOS REAIS"
-        );
-
-        System.out.println(
-                "========================================"
-        );
-
+        System.out.println("========================================");
+        System.out.println("   ANALISADOR 15s - SISTEMA COMPLETO");
+        System.out.println("========================================");
         System.out.println();
-
-        System.out.println(
-                "Modo leitura. Nenhuma operação será executada."
-        );
-
+        System.out.println("Modo AUTO-CLICK ATIVADO. Operações REAIS ativadas!");
+        System.out.println("O robô será conectado ao Chrome em segundo plano.");
         System.out.println();
-
-        System.out.println(
-                "Selenium aguardando sinal real do analisador."
-        );
-
-        System.out.println(
-                "O botão correspondente será apenas destacado."
-        );
-
-        System.out.println();
-
 
         // ========================================
-        // INICIA O FEED DE DADOS REAIS
+        // INICIA O FEED DE DADOS REAIS (E O ROBÔ JUNTO)
         // ========================================
-
-        RealTimeFeed feed =
-                new RealTimeFeed();
-
+        RealTimeFeed feed = new RealTimeFeed();
         feed.iniciar();
-
 
         // ========================================
         // MANTÉM O PROGRAMA EXECUTANDO
         // ========================================
-
         try {
-
             Thread.currentThread().join();
-
         } catch (InterruptedException e) {
-
             Thread.currentThread().interrupt();
         }
     }
