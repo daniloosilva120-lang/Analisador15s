@@ -5,7 +5,14 @@ import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeDriverService;
 import org.openqa.selenium.chrome.ChromeOptions;
+
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.stream.Stream;
 
 public class RoboBotao {
 
@@ -13,10 +20,6 @@ public class RoboBotao {
     // CHROME ESPECIAL
     // =========================================================
 
-    /*
-     * Configuracao portatil.
-     * Deve usar os mesmos valores do RealTimeFeed.
-     */
     private static final String CHROME_HOST =
             System.getProperty(
                     "analisador.chrome.host",
@@ -68,8 +71,37 @@ public class RoboBotao {
         try {
 
             System.out.println(
-                    "ROBO: procurando Chrome especial em " + DEBUGGER_ADDRESS + "..."
+                    "ROBO: procurando Chrome especial em "
+                            + DEBUGGER_ADDRESS
+                            + "..."
             );
+
+            // -------------------------------------------------
+            // LOCALIZA CHROMEDRIVER SEM CHAMAR SELENIUM MANAGER
+            // -------------------------------------------------
+
+            Path chromeDriver =
+                    localizarChromeDriver();
+
+            if (chromeDriver == null) {
+
+                throw new IllegalStateException(
+                        "chromedriver.exe não foi encontrado."
+                );
+            }
+
+            /*
+             * Não precisa mostrar o caminho toda vez.
+             * Se quiser conferir futuramente, basta descomentar:
+             *
+             * System.out.println(
+             *         "ROBO: ChromeDriver: " + chromeDriver
+             * );
+             */
+
+            // -------------------------------------------------
+            // CHROME JÁ ABERTO PELO MAIN NA PORTA 9222
+            // -------------------------------------------------
 
             ChromeOptions opcoes =
                     new ChromeOptions();
@@ -79,17 +111,28 @@ public class RoboBotao {
                     DEBUGGER_ADDRESS
             );
 
+            // -------------------------------------------------
+            // SERVICO DO CHROMEDRIVER
+            // -------------------------------------------------
+
+            ChromeDriverService servico =
+                    new ChromeDriverService.Builder()
+                            .usingDriverExecutable(
+                                    chromeDriver.toFile()
+                            )
+                            .usingAnyFreePort()
+                            .withSilent(true)
+                            .build();
+
             /*
-             * Não usamos mais caminho fixo para chromedriver.exe.
-             *
-             * O Selenium Manager procura automaticamente
-             * uma versão compatível com o Chrome instalado.
-             *
-             * Funciona mesmo trocando de computador,
-             * usuário do Windows ou versão do Chrome.
+             * Como o executável foi informado diretamente,
+             * o Selenium não precisa chamar o Selenium Manager.
              */
             navegador =
-                    new ChromeDriver(opcoes);
+                    new ChromeDriver(
+                            servico,
+                            opcoes
+                    );
 
             System.out.println(
                     "ROBO: conectado ao Chrome especial."
@@ -112,20 +155,19 @@ public class RoboBotao {
             navegador = null;
 
             System.err.println();
+
             System.err.println(
                     "ERRO: não foi possível conectar ao Chrome especial."
             );
 
             System.err.println(
-                    "Abra primeiro o INICIAR_CHROME.bat."
+                    "O Chrome especial deve ser iniciado automaticamente pelo Main."
             );
 
             System.err.println(
                     "Porta esperada: "
                             + DEBUGGER_ADDRESS
             );
-
-            System.err.println();
 
             if (e.getMessage() != null) {
 
@@ -134,7 +176,260 @@ public class RoboBotao {
                                 + e.getMessage()
                 );
             }
+
+            System.err.println();
         }
+    }
+
+
+    // =========================================================
+    // LOCALIZAR CHROMEDRIVER
+    // =========================================================
+
+    private static Path localizarChromeDriver() {
+
+        // -----------------------------------------------------
+        // 1. CAMINHO INFORMADO MANUALMENTE POR PROPRIEDADE
+        // -----------------------------------------------------
+
+        String configurado =
+                System.getProperty(
+                        "analisador.chromedriver.path"
+                );
+
+        if (
+                configurado != null
+                        &&
+                        !configurado.isBlank()
+        ) {
+
+            try {
+
+                Path caminho =
+                        Path.of(configurado);
+
+                if (Files.isRegularFile(caminho)) {
+                    return caminho;
+                }
+
+            } catch (Exception ignored) {
+            }
+        }
+
+
+        // -----------------------------------------------------
+        // 2. DRIVER DENTRO DO PROJETO
+        // -----------------------------------------------------
+
+        Path pastaAtual =
+                Path.of(
+                        System.getProperty(
+                                "user.dir"
+                        )
+                );
+
+        Path[] locaisProjeto = {
+
+                pastaAtual.resolve(
+                        "chromedriver.exe"
+                ),
+
+                pastaAtual
+                        .resolve("drivers")
+                        .resolve("chromedriver.exe"),
+
+                pastaAtual
+                        .resolve("driver")
+                        .resolve("chromedriver.exe"),
+
+                pastaAtual
+                        .resolve("bin")
+                        .resolve("chromedriver.exe")
+        };
+
+        for (Path caminho : locaisProjeto) {
+
+            if (Files.isRegularFile(caminho)) {
+                return caminho;
+            }
+        }
+
+
+        // -----------------------------------------------------
+        // 3. CACHE DO SELENIUM
+        // -----------------------------------------------------
+
+        Path cache =
+                Path.of(
+                        System.getProperty(
+                                "user.home"
+                        ),
+                        ".cache",
+                        "selenium",
+                        "chromedriver"
+                );
+
+        Path driverCache =
+                procurarChromeDriverNoCache(
+                        cache
+                );
+
+        if (driverCache != null) {
+            return driverCache;
+        }
+
+
+        // -----------------------------------------------------
+        // 4. PROCURA NO PATH DO WINDOWS
+        // -----------------------------------------------------
+
+        Path driverPath =
+                procurarNoPath();
+
+        if (driverPath != null) {
+            return driverPath;
+        }
+
+
+        return null;
+    }
+
+
+    // =========================================================
+    // PROCURAR NO CACHE
+    // =========================================================
+
+    private static Path procurarChromeDriverNoCache(
+            Path pasta
+    ) {
+
+        if (
+                pasta == null
+                        ||
+                        !Files.isDirectory(pasta)
+        ) {
+
+            return null;
+        }
+
+        try (
+                Stream<Path> arquivos =
+                        Files.walk(pasta)
+        ) {
+
+            /*
+             * Pode existir mais de uma versão no cache.
+             *
+             * Pegamos o chromedriver.exe modificado mais
+             * recentemente, que normalmente corresponde
+             * à versão usada mais recentemente pelo Selenium.
+             */
+            return arquivos
+                    .filter(Files::isRegularFile)
+                    .filter(
+                            caminho ->
+                                    caminho
+                                            .getFileName()
+                                            .toString()
+                                            .equalsIgnoreCase(
+                                                    "chromedriver.exe"
+                                            )
+                    )
+                    .max(
+                            Comparator.comparingLong(
+                                    RoboBotao::ultimaModificacao
+                            )
+                    )
+                    .orElse(null);
+
+        } catch (Exception e) {
+
+            return null;
+        }
+    }
+
+
+    // =========================================================
+    // DATA DA ULTIMA MODIFICACAO
+    // =========================================================
+
+    private static long ultimaModificacao(
+            Path caminho
+    ) {
+
+        try {
+
+            return Files
+                    .getLastModifiedTime(
+                            caminho
+                    )
+                    .toMillis();
+
+        } catch (Exception e) {
+
+            return 0;
+        }
+    }
+
+
+    // =========================================================
+    // PROCURAR NO PATH
+    // =========================================================
+
+    private static Path procurarNoPath() {
+
+        String path =
+                System.getenv(
+                        "PATH"
+                );
+
+        if (
+                path == null
+                        ||
+                        path.isBlank()
+        ) {
+
+            return null;
+        }
+
+        String[] pastas =
+                path.split(
+                        File.pathSeparator
+                );
+
+        for (String pasta : pastas) {
+
+            if (
+                    pasta == null
+                            ||
+                            pasta.isBlank()
+            ) {
+
+                continue;
+            }
+
+            try {
+
+                Path candidato =
+                        Path.of(
+                                pasta,
+                                "chromedriver.exe"
+                        );
+
+                if (
+                        Files.isRegularFile(
+                                candidato
+                        )
+                ) {
+
+                    return candidato;
+                }
+
+            } catch (Exception ignored) {
+            }
+        }
+
+        return null;
     }
 
 
@@ -151,6 +446,7 @@ public class RoboBotao {
                         ||
                         direcao.isBlank()
         ) {
+
             return;
         }
 
@@ -347,11 +643,6 @@ public class RoboBotao {
 
             } catch (Exception e) {
 
-                /*
-                 * O Chrome foi fechado ou a sessão morreu.
-                 * Libera a referência para reconectar.
-                 */
-
                 navegador = null;
             }
         }
@@ -417,6 +708,7 @@ public class RoboBotao {
                         ||
                         elemento == null
         ) {
+
             return;
         }
 
@@ -512,4 +804,3 @@ public class RoboBotao {
         }
     }
 }
-

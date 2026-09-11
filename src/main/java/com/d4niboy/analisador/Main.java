@@ -7,6 +7,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Main {
 
@@ -19,60 +21,115 @@ public class Main {
 
     public static void main(String[] args) {
 
+        // ======================================================
+        // SILENCIA AVISOS INTERNOS DO SELENIUM
+        // ======================================================
+
+        Logger.getLogger(
+                "org.openqa.selenium.manager.SeleniumManager"
+        ).setLevel(Level.OFF);
+
+        Logger.getLogger(
+                "org.openqa.selenium.manager"
+        ).setLevel(Level.OFF);
+
+        Logger.getLogger(
+                "org.openqa.selenium"
+        ).setLevel(Level.SEVERE);
+
         try {
 
-            System.out.println("==========================================");
-            System.out.println("       ANALISADOR 15s - INICIANDO");
-            System.out.println("==========================================");
+            System.out.println(
+                    "=========================================="
+            );
+
+            System.out.println(
+                    "       ANALISADOR 15s - INICIANDO"
+            );
+
+            System.out.println(
+                    "=========================================="
+            );
+
             System.out.println();
 
-            // --------------------------------------------------
+
+            // ==================================================
             // ABRE O CHROME ESPECIAL
-            // --------------------------------------------------
+            // ==================================================
 
             iniciarChromeEspecial();
 
-            // --------------------------------------------------
-            // FECHA O CHROME QUANDO O JAVA FOR ENCERRADO
-            // --------------------------------------------------
+
+            // ==================================================
+            // ENCERRAMENTO DO PROGRAMA
+            // ==================================================
 
             Runtime.getRuntime().addShutdownHook(
-                    new Thread(() -> {
+                    new Thread(
+                            () -> {
 
-                        System.out.println();
-                        System.out.println("Encerrando Analisador15s...");
+                                System.out.println();
 
-                        fecharChromeEspecial();
+                                System.out.println(
+                                        "Encerrando Analisador15s..."
+                                );
 
-                    })
+                                // Libera a porta 8765
+                                SignalHttpServer.parar();
+
+                                // Fecha somente o Chrome especial
+                                fecharChromeEspecial();
+                            }
+                    )
             );
 
-            // --------------------------------------------------
-            // SERVIDOR LOCAL
-            // --------------------------------------------------
+
+            // ==================================================
+            // SERVIDOR LOCAL DE SINAIS
+            // ==================================================
 
             SignalHttpServer.iniciar();
 
-            // --------------------------------------------------
-            // JANELA DE SINAIS
-            // --------------------------------------------------
+
+            // ==================================================
+            // JANELA RECEPTORA
+            // ==================================================
 
             SignalReceiverWindow.abrir();
 
-            // --------------------------------------------------
-            // FEED + ANALISADOR
-            // --------------------------------------------------
 
-            RealTimeFeed feed = new RealTimeFeed();
+            // ==================================================
+            // FEED + ANALISADOR + ROBO
+            // ==================================================
+
+            RealTimeFeed feed =
+                    new RealTimeFeed();
+
             feed.iniciar();
 
-            System.out.println();
-            System.out.println("==========================================");
-            System.out.println("       ANALISADOR 15s PRONTO");
-            System.out.println("==========================================");
+
             System.out.println();
 
-            // Mantém o programa executando
+            System.out.println(
+                    "=========================================="
+            );
+
+            System.out.println(
+                    "       ANALISADOR 15s PRONTO"
+            );
+
+            System.out.println(
+                    "=========================================="
+            );
+
+            System.out.println();
+
+
+            // ==================================================
+            // MANTEM O PROGRAMA EXECUTANDO
+            // ==================================================
+
             Thread.currentThread().join();
 
         } catch (InterruptedException e) {
@@ -82,65 +139,114 @@ public class Main {
         } catch (Exception e) {
 
             System.err.println();
-            System.err.println("ERRO AO INICIAR O ANALISADOR:");
-            System.err.println(e.getMessage());
+
+            System.err.println(
+                    "ERRO AO INICIAR O ANALISADOR:"
+            );
+
+            if (e.getMessage() != null) {
+
+                System.err.println(
+                        e.getMessage()
+                );
+            }
+
             e.printStackTrace();
+
+            SignalHttpServer.parar();
 
             fecharChromeEspecial();
         }
     }
 
+
     // ==========================================================
-    // INICIAR CHROME
+    // INICIAR CHROME ESPECIAL
     // ==========================================================
 
-    private static void iniciarChromeEspecial() throws Exception {
+    private static void iniciarChromeEspecial()
+            throws Exception {
 
-        System.out.println("Procurando Google Chrome...");
+        System.out.println(
+                "Procurando Google Chrome..."
+        );
 
-        Path chrome = localizarChrome();
+        Path chrome =
+                localizarChrome();
 
         if (chrome == null) {
+
             throw new IOException(
                     "Google Chrome nao foi encontrado neste computador."
             );
         }
 
-        System.out.println("Chrome encontrado:");
-        System.out.println(chrome);
-        System.out.println();
-
-        /*
-         * Perfil independente para o analisador.
-         *
-         * Exemplo:
-         * C:\Users\Engenharia\AppData\Local\Analisador15s\ChromeDebug
-         */
-        String localAppData =
-                System.getenv("LOCALAPPDATA");
-
-        if (localAppData == null || localAppData.isBlank()) {
-            localAppData =
-                    System.getProperty("user.home");
-        }
-
-        Path perfil = Path.of(
-                localAppData,
-                "Analisador15s",
-                "ChromeDebug"
+        System.out.println(
+                "Chrome encontrado:"
         );
 
-        Files.createDirectories(perfil);
+        System.out.println(
+                chrome
+        );
 
-        System.out.println("Perfil especial:");
-        System.out.println(perfil);
         System.out.println();
 
-        // ------------------------------------------------------
-        // NÃO ABRE SEGUNDO CHROME NA MESMA PORTA
-        // ------------------------------------------------------
 
-        if (portaAberta(CHROME_PORT)) {
+        // ======================================================
+        // PERFIL PORTATIL
+        // ======================================================
+
+        String localAppData =
+                System.getenv(
+                        "LOCALAPPDATA"
+                );
+
+        if (
+                localAppData == null
+                        ||
+                        localAppData.isBlank()
+        ) {
+
+            localAppData =
+                    System.getProperty(
+                            "user.home"
+                    );
+        }
+
+
+        Path perfil =
+                Path.of(
+                        localAppData,
+                        "Analisador15s",
+                        "ChromeDebug"
+                );
+
+
+        Files.createDirectories(
+                perfil
+        );
+
+
+        System.out.println(
+                "Perfil especial:"
+        );
+
+        System.out.println(
+                perfil
+        );
+
+        System.out.println();
+
+
+        // ======================================================
+        // VERIFICA PORTA 9222
+        // ======================================================
+
+        if (
+                portaAberta(
+                        CHROME_PORT
+                )
+        ) {
 
             throw new IOException(
                     "A porta "
@@ -150,46 +256,70 @@ public class Main {
             );
         }
 
-        // ------------------------------------------------------
+
+        // ======================================================
         // COMANDO DO CHROME
-        // ------------------------------------------------------
+        // ======================================================
 
-        List<String> comando = new ArrayList<>();
+        List<String> comando =
+                new ArrayList<>();
 
-        comando.add(chrome.toString());
+
+        comando.add(
+                chrome.toString()
+        );
+
 
         comando.add(
                 "--remote-debugging-port="
                         + CHROME_PORT
         );
 
+
         comando.add(
                 "--user-data-dir="
                         + perfil
         );
 
-        comando.add("--no-first-run");
+
+        comando.add(
+                "--no-first-run"
+        );
+
 
         comando.add(
                 "--no-default-browser-check"
         );
 
-        comando.add("--new-window");
 
-        comando.add(URL);
+        comando.add(
+                "--new-window"
+        );
+
+
+        comando.add(
+                URL
+        );
+
 
         System.out.println(
                 "Abrindo Chrome especial..."
         );
 
+
         ProcessBuilder pb =
-                new ProcessBuilder(comando);
+                new ProcessBuilder(
+                        comando
+                );
 
-        chromeProcess = pb.start();
 
-        // ------------------------------------------------------
-        // ESPERA A PORTA 9222
-        // ------------------------------------------------------
+        chromeProcess =
+                pb.start();
+
+
+        // ======================================================
+        // AGUARDA PORTA 9222
+        // ======================================================
 
         System.out.println(
                 "Aguardando porta "
@@ -197,18 +327,35 @@ public class Main {
                         + "..."
         );
 
-        boolean conectado = false;
 
-        for (int i = 0; i < 30; i++) {
+        boolean conectado =
+                false;
 
-            if (portaAberta(CHROME_PORT)) {
 
-                conectado = true;
+        for (
+                int i = 0;
+                i < 30;
+                i++
+        ) {
+
+            if (
+                    portaAberta(
+                            CHROME_PORT
+                    )
+            ) {
+
+                conectado =
+                        true;
+
                 break;
             }
 
-            Thread.sleep(500);
+
+            Thread.sleep(
+                    500
+            );
         }
+
 
         if (!conectado) {
 
@@ -221,7 +368,9 @@ public class Main {
             );
         }
 
+
         System.out.println();
+
         System.out.println(
                 "Chrome especial pronto."
         );
@@ -234,13 +383,15 @@ public class Main {
         System.out.println();
     }
 
+
     // ==========================================================
-    // FECHAR CHROME
+    // FECHAR CHROME ESPECIAL
     // ==========================================================
 
-    private static void fecharChromeEspecial() {
+    private static synchronized void fecharChromeEspecial() {
 
-        Process processo = chromeProcess;
+        Process processo =
+                chromeProcess;
 
         if (processo == null) {
             return;
@@ -248,28 +399,40 @@ public class Main {
 
         try {
 
-            long pid = processo.pid();
+            long pid =
+                    processo.pid();
+
 
             System.out.println(
                     "Fechando Chrome especial..."
             );
 
+
             /*
-             * /T = encerra também os processos filhos.
-             * /F = força o encerramento.
+             * /T:
+             * encerra também processos filhos.
              *
-             * Só usa o PID do Chrome criado por este Main.
+             * /F:
+             * força o encerramento.
+             *
+             * Utiliza somente o PID do Chrome
+             * iniciado pelo Main.
              */
             new ProcessBuilder(
                     "taskkill",
                     "/PID",
-                    String.valueOf(pid),
+                    String.valueOf(
+                            pid
+                    ),
                     "/T",
                     "/F"
             )
-                    .redirectErrorStream(true)
+                    .redirectErrorStream(
+                            true
+                    )
                     .start()
                     .waitFor();
+
 
         } catch (Exception e) {
 
@@ -281,14 +444,19 @@ public class Main {
             }
         }
 
-        chromeProcess = null;
+
+        chromeProcess =
+                null;
     }
+
 
     // ==========================================================
     // TESTAR PORTA
     // ==========================================================
 
-    private static boolean portaAberta(int porta) {
+    private static boolean portaAberta(
+            int porta
+    ) {
 
         try (
                 Socket socket =
@@ -311,6 +479,7 @@ public class Main {
         }
     }
 
+
     // ==========================================================
     // LOCALIZAR CHROME
     // ==========================================================
@@ -320,14 +489,24 @@ public class Main {
         List<Path> caminhos =
                 new ArrayList<>();
 
+
         String programFiles =
-                System.getenv("ProgramFiles");
+                System.getenv(
+                        "ProgramFiles"
+                );
+
 
         String programFilesX86 =
-                System.getenv("ProgramFiles(x86)");
+                System.getenv(
+                        "ProgramFiles(x86)"
+                );
+
 
         String localAppData =
-                System.getenv("LOCALAPPDATA");
+                System.getenv(
+                        "LOCALAPPDATA"
+                );
+
 
         if (programFiles != null) {
 
@@ -342,6 +521,7 @@ public class Main {
             );
         }
 
+
         if (programFilesX86 != null) {
 
             caminhos.add(
@@ -354,6 +534,7 @@ public class Main {
                     )
             );
         }
+
 
         if (localAppData != null) {
 
@@ -368,18 +549,29 @@ public class Main {
             );
         }
 
-        for (Path caminho : caminhos) {
 
-            if (Files.isRegularFile(caminho)) {
+        for (
+                Path caminho :
+                caminhos
+        ) {
+
+            if (
+                    Files.isRegularFile(
+                            caminho
+                    )
+            ) {
+
                 return caminho;
             }
         }
 
+
         return localizarChromeRegistro();
     }
 
+
     // ==========================================================
-    // PROCURAR CHROME NO REGISTRO
+    // LOCALIZAR CHROME NO REGISTRO
     // ==========================================================
 
     private static Path localizarChromeRegistro() {
@@ -391,7 +583,11 @@ public class Main {
                 "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe"
         };
 
-        for (String chave : chaves) {
+
+        for (
+                String chave :
+                chaves
+        ) {
 
             try {
 
@@ -402,8 +598,11 @@ public class Main {
                                 chave,
                                 "/ve"
                         )
-                                .redirectErrorStream(true)
+                                .redirectErrorStream(
+                                        true
+                                )
                                 .start();
+
 
                 String resultado =
                         new String(
@@ -412,31 +611,54 @@ public class Main {
                                         .readAllBytes()
                         );
 
+
                 processo.waitFor();
 
-                for (String linha :
-                        resultado.split("\\R")) {
 
-                    if (!linha.contains("REG_SZ")) {
+                for (
+                        String linha :
+                        resultado.split(
+                                "\\R"
+                        )
+                ) {
+
+                    if (
+                            !linha.contains(
+                                    "REG_SZ"
+                            )
+                    ) {
+
                         continue;
                     }
 
+
                     int pos =
-                            linha.indexOf("REG_SZ");
+                            linha.indexOf(
+                                    "REG_SZ"
+                            );
+
 
                     String caminho =
-                            linha
-                                    .substring(
+                            linha.substring(
                                             pos
                                                     + "REG_SZ"
                                                     .length()
                                     )
                                     .trim();
 
-                    Path chrome =
-                            Path.of(caminho);
 
-                    if (Files.isRegularFile(chrome)) {
+                    Path chrome =
+                            Path.of(
+                                    caminho
+                            );
+
+
+                    if (
+                            Files.isRegularFile(
+                                    chrome
+                            )
+                    ) {
+
                         return chrome;
                     }
                 }
@@ -444,6 +666,7 @@ public class Main {
             } catch (Exception ignored) {
             }
         }
+
 
         return null;
     }

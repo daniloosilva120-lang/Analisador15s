@@ -6,6 +6,7 @@ import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
@@ -13,17 +14,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class SignalHttpServer {
 
-    /*
-     * Configuracao portatil do servidor local.
-     *
-     * Por padrao continua usando:
-     * 127.0.0.1:8765
-     *
-     * Pode ser alterado sem mexer no codigo:
-     *
-     * -Danalisador.signal.host=127.0.0.1
-     * -Danalisador.signal.port=8765
-     */
     private static final String SERVER_HOST =
             System.getProperty(
                     "analisador.signal.host",
@@ -42,57 +32,130 @@ public class SignalHttpServer {
     private static final AtomicLong ultimoTimestamp =
             new AtomicLong(0);
 
-    public static void iniciar() {
+    /*
+     * Mantemos a referência do servidor para conseguir
+     * encerrá-lo corretamente quando o Main terminar.
+     */
+    private static HttpServer server;
 
-        new Thread(
-                () -> {
+    private static boolean iniciado = false;
 
-                    try {
+    // ==========================================================
+    // INICIAR SERVIDOR
+    // ==========================================================
 
-                        HttpServer server =
-                                HttpServer.create(
-                                        new InetSocketAddress(
-                                                SERVER_HOST,
-                                                SERVER_PORT
-                                        ),
-                                        0
-                                );
+    public static synchronized void iniciar() {
 
-                        server.createContext(
-                                "/sinal",
-                                new SinalHandler()
-                        );
+        /*
+         * Evita iniciar duas vezes dentro do mesmo programa.
+         */
+        if (iniciado && server != null) {
 
-                        server.setExecutor(null);
+            System.out.println(
+                    "SIGNAL HTTP: já está ativo em http://"
+                            + SERVER_HOST
+                            + ":"
+                            + SERVER_PORT
+                            + "/sinal"
+            );
 
-                        server.start();
+            return;
+        }
 
-                        System.out.println(
-                                "SIGNAL HTTP: http://"
-                                        + SERVER_HOST
-                                        + ":"
-                                        + SERVER_PORT
-                                        + "/sinal"
-                        );
+        try {
 
-                    } catch (IOException e) {
+            server =
+                    HttpServer.create(
+                            new InetSocketAddress(
+                                    SERVER_HOST,
+                                    SERVER_PORT
+                            ),
+                            0
+                    );
 
-                        System.err.println(
-                                "ERRO: Não foi possível iniciar o servidor HTTP."
-                        );
+            server.createContext(
+                    "/sinal",
+                    new SinalHandler()
+            );
 
-                        if (e.getMessage() != null) {
-                            System.err.println(
-                                    "Detalhes: "
-                                            + e.getMessage()
-                            );
-                        }
-                    }
+            server.setExecutor(null);
 
-                },
-                "HttpServerThread"
-        ).start();
+            server.start();
+
+            iniciado = true;
+
+            System.out.println(
+                    "SIGNAL HTTP: http://"
+                            + SERVER_HOST
+                            + ":"
+                            + SERVER_PORT
+                            + "/sinal"
+            );
+
+        } catch (BindException e) {
+
+            server = null;
+            iniciado = false;
+
+            /*
+             * Não joga aquele texto vermelho enorme.
+             * Mostra apenas uma mensagem simples.
+             */
+            System.out.println(
+                    "SIGNAL HTTP: porta "
+                            + SERVER_PORT
+                            + " já está sendo usada por outro processo."
+            );
+
+        } catch (IOException e) {
+
+            server = null;
+            iniciado = false;
+
+            System.out.println(
+                    "SIGNAL HTTP: não foi possível iniciar."
+            );
+
+            if (e.getMessage() != null) {
+
+                System.out.println(
+                        "Detalhes: "
+                                + e.getMessage()
+                );
+            }
+        }
     }
+
+    // ==========================================================
+    // PARAR SERVIDOR
+    // ==========================================================
+
+    public static synchronized void parar() {
+
+        if (server == null) {
+            return;
+        }
+
+        try {
+
+            server.stop(0);
+
+            System.out.println(
+                    "SIGNAL HTTP: encerrado."
+            );
+
+        } catch (Exception ignored) {
+
+        } finally {
+
+            server = null;
+            iniciado = false;
+        }
+    }
+
+    // ==========================================================
+    // PUBLICAR SINAL
+    // ==========================================================
 
     public static synchronized void publicarSinal(
             String ativo,
@@ -127,6 +190,10 @@ public class SignalHttpServer {
                 );
     }
 
+    // ==========================================================
+    // ESCAPAR JSON
+    // ==========================================================
+
     private static String escaparJson(
             String texto
     ) {
@@ -153,6 +220,10 @@ public class SignalHttpServer {
                         "\\n"
                 );
     }
+
+    // ==========================================================
+    // HANDLER
+    // ==========================================================
 
     private static class SinalHandler
             implements HttpHandler {
