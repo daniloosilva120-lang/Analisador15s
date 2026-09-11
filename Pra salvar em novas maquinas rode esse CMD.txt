@@ -1,1 +1,40 @@
+1 Instale o Git e o IntelliJ IDEA.
+ 
+2 Abra o PowerShell na pasta onde quer colocar o projeto. 
+
+3 Rode: 
+
+< PowerShell >
 git clone https://github.com/daniloosilva120-lang/Analisador15s.git
+
+4 Entre na pasta criada: 
+
+< PowerShell >
+cd Analisador15s
+
+5 Abra essa pasta no IntelliJ. 
+
+6 Espere o IntelliJ carregar o Maven e baixar as dependências do projeto. 
+
+7 Para atualizar o projeto com o que está no GitHub, rode: 
+
+< PowerShell >
+git pull origin master
+
+8 Depois que fizer alterações no IntelliJ, salve os arquivos e execute: 
+
+     ATUALIZAR_GITHUB.bat
+
+     Esse BAT vai fazer sozinho:
+
+        git add
+        git commit
+        git pull --rebase
+        git push
+    e no final deve aparecer:
+
+
+  PROJETO SALVO NO GITHUB COM SUCESSO
+
+A regra importante é: não baixe ZIP do GitHub para trabalhar entre computadores. Sempre use git clone, porque assim a pasta já vem com o .git e fica sincronizável.
+Depois do primeiro clone, no uso normal fica assim: antes de começar a mexer no outro PC, execute o BAT para sincronizar; depois altere o projeto; no final execute o BAT de novo para enviar tudo ao GitHub.
