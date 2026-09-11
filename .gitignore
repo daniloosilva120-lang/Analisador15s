@@ -1,4 +1,4 @@
-# Arquivos compilados
+﻿# Arquivos compilados
 target/
 out/
 
@@ -14,7 +14,7 @@ out/
 
 # Sistema
 .DS_Store
-Thumbs.db.maven-repository/
+Thumbs.db
 target/
 out/
 .idea/
