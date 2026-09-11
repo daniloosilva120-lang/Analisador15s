@@ -22,8 +22,35 @@ public class CandleDatasetCollector {
      * Arquivo V2 separado para não misturar o cabeçalho antigo
      * com as novas colunas de indicadores.
      */
+    /*
+     * Pasta portatil do dataset.
+     *
+     * Por padrao os dados ficam dentro da pasta do usuario atual:
+     *
+     * Windows:
+     * C:\\Users\\USUARIO\\Analisador15s\\dados_ia
+     *
+     * Assim o codigo nao depende do nome do usuario,
+     * da pasta do projeto ou do computador.
+     *
+     * Se algum dia for necessario escolher outra pasta,
+     * ela pode ser informada sem alterar o codigo usando:
+     *
+     * -Danalisador.dados.dir="D:\\MinhaPasta"
+     */
+    private static final Path PASTA_BASE =
+            Path.of(
+                    System.getProperty(
+                            "analisador.dados.dir",
+                            Path.of(
+                                    System.getProperty("user.home"),
+                                    "Analisador15s"
+                            ).toString()
+                    )
+            );
+
     private static final Path PASTA =
-            Path.of("dados_ia");
+            PASTA_BASE.resolve("dados_ia");
 
     private static final Path ARQUIVO =
             PASTA.resolve(
@@ -184,12 +211,20 @@ public class CandleDatasetCollector {
         }
 
         /*
-         * Precisamos de 20 candles fechados ANTES do candle
-         * de resultado para calcular corretamente SMA20,
-         * RSI14 e ATR14.
+         * Agora precisamos somente de 10 candles fechados ANTES
+         * do candle de resultado.
          *
-         * A janela principal da IA continua sendo os últimos
-         * 10 candles.
+         * Exemplo:
+         * candles 1..10 = entrada da IA
+         * candle 11     = resultado 15s depois
+         *
+         * As colunas antigas rsi14/sma20/ema20/atr14 continuam
+         * no CSV apenas para manter compatibilidade com arquivos
+         * já coletados. O CandleFeatureExtractor calcula versões
+         * compatíveis com a janela de 10 candles.
+         *
+         * O AiTrainer atual usa as 70 características derivadas
+         * diretamente dos 10 candles, não essas colunas extras.
          */
         int indiceResultado =
                 candles.size() - 1;
@@ -469,3 +504,5 @@ public class CandleDatasetCollector {
         return ARQUIVO.toAbsolutePath();
     }
 }
+
+

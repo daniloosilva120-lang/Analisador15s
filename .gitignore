@@ -14,4 +14,10 @@ out/
 
 # Sistema
 .DS_Store
-Thumbs.db
+Thumbs.db.maven-repository/
+target/
+out/
+.idea/
+*.iml
+
+/.maven-repository/

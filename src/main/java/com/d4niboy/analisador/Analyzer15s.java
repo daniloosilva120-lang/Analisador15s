@@ -24,11 +24,10 @@ public class Analyzer15s {
         double preco =
                 Math.max(Math.abs(atual.close()), 0.0000001);
 
-        double rsi14 = rsi(c, 14);
+        double rsi9 = rsi(c, 9);
 
         double sma5 = sma(c, 5);
         double sma10 = sma(c, 10);
-        double sma20 = sma(c, 20);
 
         double vol5 = volatilidadeNormalizada(c, 5);
         double vol10 = volatilidadeNormalizada(c, 10);
@@ -36,11 +35,11 @@ public class Analyzer15s {
         double momentum3 = retorno(c, 3);
         double momentum5 = retorno(c, 5);
 
-        double slope5 = inclinacaoSma(c, 5, 3);
-        double slope10 = inclinacaoSma(c, 10, 3);
+        double slope5 = inclinacaoLinear(c, 5);
+        double slope10 = inclinacaoLinear(c, 10);
 
-        double distancia5_20 =
-                Math.abs(sma5 - sma20) / preco;
+        double distancia5_10 =
+                Math.abs(sma5 - sma10) / preco;
 
         double escala =
                 Math.max(vol10, VOL_MINIMA);
@@ -51,12 +50,12 @@ public class Analyzer15s {
                     "Mercado praticamente parado | Vol="
                             + pct(vol10)
                             + " | RSI="
-                            + f(rsi14)
+                            + f(rsi9)
             );
         }
 
         boolean mediasJuntas =
-                distancia5_20 < escala * 0.70;
+                distancia5_10 < escala * 0.70;
 
         boolean momentumFraco =
                 Math.abs(momentum5) < escala * 1.10;
@@ -81,7 +80,7 @@ public class Analyzer15s {
                             + " | Mom="
                             + pct(momentum5)
                             + " | RSI="
-                            + f(rsi14)
+                            + f(rsi9)
             );
         }
 
@@ -89,14 +88,10 @@ public class Analyzer15s {
         StringBuilder motivo = new StringBuilder();
 
         boolean mediasAlta =
-                sma5 > sma10
-                        &&
-                        sma10 > sma20;
+                sma5 > sma10;
 
         boolean mediasBaixa =
-                sma5 < sma10
-                        &&
-                        sma10 < sma20;
+                sma5 < sma10;
 
         if (mediasAlta) {
 
@@ -194,9 +189,9 @@ public class Analyzer15s {
         }
 
         if (
-                rsi14 >= 55
+                rsi9 >= 55
                         &&
-                        rsi14 <= 65
+                        rsi9 <= 65
         ) {
 
             score += 0.75;
@@ -206,9 +201,9 @@ public class Analyzer15s {
             );
 
         } else if (
-                rsi14 <= 45
+                rsi9 <= 45
                         &&
-                        rsi14 >= 35
+                        rsi9 >= 35
         ) {
 
             score -= 0.75;
@@ -218,7 +213,7 @@ public class Analyzer15s {
             );
         }
 
-        if (rsi14 >= 78) {
+        if (rsi9 >= 78) {
 
             score -= 0.70;
 
@@ -226,7 +221,7 @@ public class Analyzer15s {
                     "RSI sobrecomprado; "
             );
 
-        } else if (rsi14 <= 22) {
+        } else if (rsi9 <= 22) {
 
             score += 0.70;
 
@@ -542,7 +537,7 @@ public class Analyzer15s {
                 "Score="
                         + f(score)
                         + " | RSI="
-                        + f(rsi14)
+                        + f(rsi9)
                         + " | Mom3="
                         + pct(momentum3)
                         + " | Mom5="
@@ -647,34 +642,43 @@ public class Analyzer15s {
         return soma / periodo;
     }
 
-    private double inclinacaoSma(
+    private double inclinacaoLinear(
             List<Candle> c,
-            int periodo,
-            int deslocamento
+            int periodo
     ) {
 
-        int n =
-                c.size();
+        int n = c.size();
 
-        if (
-                n < periodo + deslocamento
-        ) {
-            return 0;
+        if (periodo < 2 || n < periodo) {
+            return 0.0;
         }
 
-        double atual =
-                smaAte(
-                        c,
-                        periodo,
-                        n
-                );
+        int inicio = n - periodo;
 
-        double anterior =
-                smaAte(
-                        c,
-                        periodo,
-                        n - deslocamento
-                );
+        double mediaX = (periodo - 1) / 2.0;
+        double mediaY = 0.0;
+
+        for (int i = 0; i < periodo; i++) {
+            mediaY += c.get(inicio + i).close();
+        }
+
+        mediaY /= periodo;
+
+        double numerador = 0.0;
+        double denominador = 0.0;
+
+        for (int i = 0; i < periodo; i++) {
+
+            double dx = i - mediaX;
+            double dy = c.get(inicio + i).close() - mediaY;
+
+            numerador += dx * dy;
+            denominador += dx * dx;
+        }
+
+        if (denominador <= 0.0) {
+            return 0.0;
+        }
 
         double preco =
                 Math.max(
@@ -684,13 +688,7 @@ public class Analyzer15s {
                         0.0000001
                 );
 
-        return (
-                atual
-                        -
-                        anterior
-        )
-                /
-                preco;
+        return (numerador / denominador) / preco;
     }
 
     private double retorno(
@@ -941,3 +939,4 @@ public class Analyzer15s {
         );
     }
 }
+

@@ -18,8 +18,27 @@ import java.util.regex.Pattern;
 public class SignalReceiverWindow
         extends JFrame {
 
+    /*
+     * Usa a mesma configuracao portatil do SignalHttpServer.
+     */
+    private static final String SERVER_HOST =
+            System.getProperty(
+                    "analisador.signal.host",
+                    "127.0.0.1"
+            );
+
+    private static final int SERVER_PORT =
+            Integer.getInteger(
+                    "analisador.signal.port",
+                    8765
+            );
+
     private static final String URL_SINAL =
-            "http://127.0.0.1:8765/sinal";
+            "http://"
+                    + SERVER_HOST
+                    + ":"
+                    + SERVER_PORT
+                    + "/sinal";
 
     private static final DateTimeFormatter HORARIO =
             DateTimeFormatter
@@ -780,3 +799,4 @@ public class SignalReceiverWindow
         );
     }
 }
+

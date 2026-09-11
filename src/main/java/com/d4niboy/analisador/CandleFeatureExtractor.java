@@ -4,7 +4,7 @@ import java.util.List;
 
 public class CandleFeatureExtractor {
 
-    public static final int HISTORICO_MINIMO = 20;
+    public static final int HISTORICO_MINIMO = 10;
 
     public Features extrair(List<Candle> candles, int fimExclusivo) {
 
@@ -19,19 +19,42 @@ public class CandleFeatureExtractor {
 
         double sma5 = sma(candles, fimExclusivo, 5);
         double sma10 = sma(candles, fimExclusivo, 10);
-        double sma20 = sma(candles, fimExclusivo, 20);
+        /*
+         * Mantemos estes nomes no record/CSV por compatibilidade com
+         * datasets já existentes. Com histórico mínimo de 10 candles,
+         * o antigo SMA20 passa a usar a janela máxima disponível: 10.
+         */
+        double sma20 = sma(candles, fimExclusivo, 10);
 
         double ema5 = ema(candles, fimExclusivo, 5);
         double ema10 = ema(candles, fimExclusivo, 10);
-        double ema20 = ema(candles, fimExclusivo, 20);
+        /*
+         * Compatibilidade com a coluna antiga ema20.
+         * Com 10 candles, usamos EMA10 para não exigir histórico extra.
+         */
+        double ema20 = ema(candles, fimExclusivo, 10);
 
-        double rsi14 = rsi(candles, fimExclusivo, 14);
+        /*
+         * Dez candles possuem 9 variações entre fechamentos.
+         * Por isso o RSI usa período 9.
+         * O nome rsi14 é mantido somente para compatibilidade do CSV.
+         */
+        double rsi14 = rsi(candles, fimExclusivo, 9);
 
         double momentum3 = retorno(candles, fimExclusivo, 3);
         double momentum5 = retorno(candles, fimExclusivo, 5);
-        double momentum10 = retorno(candles, fimExclusivo, 10);
+        /*
+         * Com uma janela de 10 candles, o maior retorno possível compara
+         * o primeiro candle com o décimo: distância de 9 candles.
+         * O nome momentum10 é mantido para compatibilidade do CSV.
+         */
+        double momentum10 = retorno(candles, fimExclusivo, 9);
 
-        double atr14 = atr(candles, fimExclusivo, 14);
+        /*
+         * ATR9: 10 candles fornecem 9 True Ranges com fechamento anterior.
+         * O nome atr14 é mantido para compatibilidade do CSV.
+         */
+        double atr14 = atr(candles, fimExclusivo, 9);
         double atr14Relativo = atr14 / preco;
 
         double volatilidade5 = volatilidadeRetornos(candles, fimExclusivo, 5);
@@ -58,10 +81,10 @@ public class CandleFeatureExtractor {
                 (atual.close() - sma20) / preco;
 
         double slopeSma5 =
-                slopeSma(candles, fimExclusivo, 5, 3);
+                slopeLinear(candles, fimExclusivo, 5);
 
         double slopeSma10 =
-                slopeSma(candles, fimExclusivo, 10, 3);
+                slopeLinear(candles, fimExclusivo, 10);
 
         int altas10 = 0;
         int baixas10 = 0;
@@ -473,26 +496,42 @@ public class CandleFeatureExtractor {
         return menor;
     }
 
-    private double slopeSma(
+    private double slopeLinear(
             List<Candle> c,
             int fim,
-            int periodo,
-            int deslocamento
+            int periodo
     ) {
 
-        if (fim - deslocamento < periodo) {
+        if (periodo < 2 || fim < periodo) {
             return 0.0;
         }
 
-        double atual =
-                sma(c, fim, periodo);
+        int inicio = fim - periodo;
 
-        double anterior =
-                sma(
-                        c,
-                        fim - deslocamento,
-                        periodo
-                );
+        double mediaX = (periodo - 1) / 2.0;
+        double mediaY = 0.0;
+
+        for (int i = 0; i < periodo; i++) {
+            mediaY += c.get(inicio + i).close();
+        }
+
+        mediaY /= periodo;
+
+        double numerador = 0.0;
+        double denominador = 0.0;
+
+        for (int i = 0; i < periodo; i++) {
+
+            double dx = i - mediaX;
+            double dy = c.get(inicio + i).close() - mediaY;
+
+            numerador += dx * dy;
+            denominador += dx * dx;
+        }
+
+        if (denominador <= 0.0) {
+            return 0.0;
+        }
 
         double preco =
                 seguro(
@@ -501,7 +540,7 @@ public class CandleFeatureExtractor {
                         )
                 );
 
-        return (atual - anterior) / preco;
+        return (numerador / denominador) / preco;
     }
 
     private double seguro(double valor) {
@@ -563,3 +602,4 @@ public class CandleFeatureExtractor {
     ) {
     }
 }
+

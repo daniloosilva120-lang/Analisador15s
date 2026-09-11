@@ -24,6 +24,16 @@ import java.util.regex.Pattern;
 
 public class RealTimeFeed {
 
+    /*
+     * Configuracao portatil do Chrome DevTools.
+     * O padrao continua sendo 127.0.0.1:9222.
+     */
+    private static final String CHROME_HOST =
+            System.getProperty("analisador.chrome.host", "127.0.0.1");
+
+    private static final int CHROME_PORT =
+            Integer.getInteger("analisador.chrome.port", 9222);
+
     private final RoboBotao roboBotao =
             new RoboBotao();
 
@@ -228,7 +238,7 @@ public class RealTimeFeed {
                         .newBuilder()
                         .uri(
                                 URI.create(
-                                        "http://127.0.0.1:9222/json/list"
+                                        "http://" + CHROME_HOST + ":" + CHROME_PORT + "/json/list"
                                 )
                         )
                         .GET()
@@ -2277,3 +2287,4 @@ public class RealTimeFeed {
         System.out.println();
     }
 }
+

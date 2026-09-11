@@ -5,10 +5,8 @@ import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeDriverService;
 import org.openqa.selenium.chrome.ChromeOptions;
 
-import java.io.File;
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
@@ -17,15 +15,38 @@ import java.util.logging.Logger;
 
 public class PlatformButtonLocator {
 
-    private static final String CHROMEDRIVER_PATH =
-            "C:\\Users\\Engenharia\\.cache\\selenium\\chromedriver\\win64\\151.0.7922.138\\chromedriver.exe";
+    /*
+     * Configuracao portatil.
+     * Usa o mesmo Chrome especial do RoboBotao e RealTimeFeed.
+     */
+    private static final String CHROME_HOST =
+            System.getProperty(
+                    "analisador.chrome.host",
+                    "127.0.0.1"
+            );
+
+    private static final int CHROME_PORT =
+            Integer.getInteger(
+                    "analisador.chrome.port",
+                    9222
+            );
+
+    private static final String DEBUGGER_ADDRESS =
+            CHROME_HOST + ":" + CHROME_PORT;
 
     private WebDriver driver;
 
     public synchronized void conectar() {
 
         if (driver != null) {
-            return;
+
+            try {
+                driver.getCurrentUrl();
+                return;
+
+            } catch (Exception e) {
+                driver = null;
+            }
         }
 
         try {
@@ -39,21 +60,16 @@ public class PlatformButtonLocator {
 
             options.setExperimentalOption(
                     "debuggerAddress",
-                    "127.0.0.1:9222"
+                    DEBUGGER_ADDRESS
             );
 
-            ChromeDriverService service =
-                    new ChromeDriverService.Builder()
-                            .usingDriverExecutable(
-                                    new File(
-                                            CHROMEDRIVER_PATH
-                                    )
-                            )
-                            .build();
-
+            /*
+             * Nao existe mais caminho fixo para chromedriver.exe.
+             * O Selenium Manager procura automaticamente
+             * uma versao compativel com o Chrome instalado.
+             */
             driver =
                     new ChromeDriver(
-                            service,
                             options
                     );
 
@@ -62,6 +78,11 @@ public class PlatformButtonLocator {
                     .implicitlyWait(
                             Duration.ofSeconds(1)
                     );
+
+            System.out.println(
+                    "PLATFORM LOCATOR: conectado ao Chrome em "
+                            + DEBUGGER_ADDRESS
+            );
 
         } catch (Exception e) {
 

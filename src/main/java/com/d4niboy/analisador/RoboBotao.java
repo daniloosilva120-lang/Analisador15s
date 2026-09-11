@@ -5,17 +5,39 @@ import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeDriverService;
 import org.openqa.selenium.chrome.ChromeOptions;
-
-import java.io.File;
 
 public class RoboBotao {
 
-    private static final String CHROMEDRIVER_PATH =
-            "C:\\Users\\Engenharia\\.cache\\selenium\\chromedriver\\win64\\151.0.7922.138\\chromedriver.exe";
+    // =========================================================
+    // CHROME ESPECIAL
+    // =========================================================
+
+    /*
+     * Configuracao portatil.
+     * Deve usar os mesmos valores do RealTimeFeed.
+     */
+    private static final String CHROME_HOST =
+            System.getProperty(
+                    "analisador.chrome.host",
+                    "127.0.0.1"
+            );
+
+    private static final int CHROME_PORT =
+            Integer.getInteger(
+                    "analisador.chrome.port",
+                    9222
+            );
+
+    private static final String DEBUGGER_ADDRESS =
+            CHROME_HOST + ":" + CHROME_PORT;
 
     private static WebDriver navegador;
+
+
+    // =========================================================
+    // BOTOES DA PLATAFORMA
+    // =========================================================
 
     private static final String XPATH_CIMA =
             "//span[normalize-space()='Para cima']/ancestor::button";
@@ -23,9 +45,19 @@ public class RoboBotao {
     private static final String XPATH_BAIXO =
             "//span[normalize-space()='Para baixo']/ancestor::button";
 
+
+    // =========================================================
+    // CONSTRUTOR
+    // =========================================================
+
     public RoboBotao() {
         conectar();
     }
+
+
+    // =========================================================
+    // CONECTAR AO CHROME ESPECIAL
+    // =========================================================
 
     private static synchronized void conectar() {
 
@@ -35,28 +67,43 @@ public class RoboBotao {
 
         try {
 
+            System.out.println(
+                    "ROBO: procurando Chrome especial em " + DEBUGGER_ADDRESS + "..."
+            );
+
             ChromeOptions opcoes =
                     new ChromeOptions();
 
             opcoes.setExperimentalOption(
                     "debuggerAddress",
-                    "127.0.0.1:9222"
+                    DEBUGGER_ADDRESS
             );
 
-            ChromeDriverService servico =
-                    new ChromeDriverService.Builder()
-                            .usingDriverExecutable(
-                                    new File(
-                                            CHROMEDRIVER_PATH
-                                    )
-                            )
-                            .build();
-
+            /*
+             * Não usamos mais caminho fixo para chromedriver.exe.
+             *
+             * O Selenium Manager procura automaticamente
+             * uma versão compatível com o Chrome instalado.
+             *
+             * Funciona mesmo trocando de computador,
+             * usuário do Windows ou versão do Chrome.
+             */
             navegador =
-                    new ChromeDriver(
-                            servico,
-                            opcoes
-                    );
+                    new ChromeDriver(opcoes);
+
+            System.out.println(
+                    "ROBO: conectado ao Chrome especial."
+            );
+
+            try {
+
+                System.out.println(
+                        "ROBO: página atual: "
+                                + navegador.getCurrentUrl()
+                );
+
+            } catch (Exception ignored) {
+            }
 
             removerDestaque();
 
@@ -64,15 +111,36 @@ public class RoboBotao {
 
             navegador = null;
 
+            System.err.println();
             System.err.println(
-                    "ERRO: Não foi possível conectar ao Chrome especial."
+                    "ERRO: não foi possível conectar ao Chrome especial."
             );
 
             System.err.println(
                     "Abra primeiro o INICIAR_CHROME.bat."
             );
+
+            System.err.println(
+                    "Porta esperada: "
+                            + DEBUGGER_ADDRESS
+            );
+
+            System.err.println();
+
+            if (e.getMessage() != null) {
+
+                System.err.println(
+                        "Detalhes: "
+                                + e.getMessage()
+                );
+            }
         }
     }
+
+
+    // =========================================================
+    // RECEBER SINAL
+    // =========================================================
 
     public static synchronized void receberSinal(
             String direcao
@@ -117,11 +185,16 @@ public class RoboBotao {
         } else {
 
             System.err.println(
-                    "ERRO: Direção desconhecida recebida: "
+                    "ERRO: direção desconhecida recebida: "
                             + direcao
             );
         }
     }
+
+
+    // =========================================================
+    // COMPRA / VENDA
+    // =========================================================
 
     public static synchronized void clicarCompra() {
         clicarCima();
@@ -131,9 +204,31 @@ public class RoboBotao {
         clicarBaixo();
     }
 
+
+    // =========================================================
+    // CLICAR PARA CIMA
+    // =========================================================
+
     public static synchronized void clicarCima() {
 
         if (!garantirConexao()) {
+            return;
+        }
+
+        /*
+         * Segurança:
+         * clique automático somente na conta DEMO.
+         */
+        if (!estaNaContaDemo()) {
+
+            System.err.println(
+                    "ROBO: clique automático bloqueado."
+            );
+
+            System.err.println(
+                    "ROBO: a página atual não foi identificada como DEMO."
+            );
+
             return;
         }
 
@@ -148,23 +243,55 @@ public class RoboBotao {
                             )
                     );
 
-            destacar(
-                    botao
-            );
+            destacar(botao);
 
             botao.click();
+
+            System.out.println(
+                    "ROBO: clique PARA CIMA executado na DEMO."
+            );
 
         } catch (Exception e) {
 
             System.err.println(
-                    "ERRO: Não foi possível clicar em PARA CIMA."
+                    "ERRO: não foi possível clicar em PARA CIMA."
             );
+
+            if (e.getMessage() != null) {
+
+                System.err.println(
+                        "Detalhes: "
+                                + e.getMessage()
+                );
+            }
         }
     }
+
+
+    // =========================================================
+    // CLICAR PARA BAIXO
+    // =========================================================
 
     public static synchronized void clicarBaixo() {
 
         if (!garantirConexao()) {
+            return;
+        }
+
+        /*
+         * Segurança:
+         * clique automático somente na conta DEMO.
+         */
+        if (!estaNaContaDemo()) {
+
+            System.err.println(
+                    "ROBO: clique automático bloqueado."
+            );
+
+            System.err.println(
+                    "ROBO: a página atual não foi identificada como DEMO."
+            );
+
             return;
         }
 
@@ -179,24 +306,54 @@ public class RoboBotao {
                             )
                     );
 
-            destacar(
-                    botao
-            );
+            destacar(botao);
 
             botao.click();
+
+            System.out.println(
+                    "ROBO: clique PARA BAIXO executado na DEMO."
+            );
 
         } catch (Exception e) {
 
             System.err.println(
-                    "ERRO: Não foi possível clicar em PARA BAIXO."
+                    "ERRO: não foi possível clicar em PARA BAIXO."
             );
+
+            if (e.getMessage() != null) {
+
+                System.err.println(
+                        "Detalhes: "
+                                + e.getMessage()
+                );
+            }
         }
     }
+
+
+    // =========================================================
+    // GARANTIR CONEXAO
+    // =========================================================
 
     private static boolean garantirConexao() {
 
         if (navegador != null) {
-            return true;
+
+            try {
+
+                navegador.getCurrentUrl();
+
+                return true;
+
+            } catch (Exception e) {
+
+                /*
+                 * O Chrome foi fechado ou a sessão morreu.
+                 * Libera a referência para reconectar.
+                 */
+
+                navegador = null;
+            }
         }
 
         conectar();
@@ -212,6 +369,44 @@ public class RoboBotao {
 
         return true;
     }
+
+
+    // =========================================================
+    // VERIFICAR CONTA DEMO
+    // =========================================================
+
+    private static boolean estaNaContaDemo() {
+
+        if (navegador == null) {
+            return false;
+        }
+
+        try {
+
+            String url =
+                    navegador.getCurrentUrl();
+
+            if (url == null) {
+                return false;
+            }
+
+            String urlMinuscula =
+                    url.toLowerCase();
+
+            return urlMinuscula.contains(
+                    "demo-trade"
+            );
+
+        } catch (Exception e) {
+
+            return false;
+        }
+    }
+
+
+    // =========================================================
+    // DESTACAR BOTAO
+    // =========================================================
 
     private static void destacar(
             WebElement elemento
@@ -253,6 +448,11 @@ public class RoboBotao {
         }
     }
 
+
+    // =========================================================
+    // REMOVER DESTAQUE
+    // =========================================================
+
     public static synchronized void removerDestaque() {
 
         if (navegador == null) {
@@ -287,7 +487,29 @@ public class RoboBotao {
         }
     }
 
+
+    // =========================================================
+    // STATUS
+    // =========================================================
+
     public boolean estaConectado() {
-        return navegador != null;
+
+        if (navegador == null) {
+            return false;
+        }
+
+        try {
+
+            navegador.getCurrentUrl();
+
+            return true;
+
+        } catch (Exception e) {
+
+            navegador = null;
+
+            return false;
+        }
     }
 }
+

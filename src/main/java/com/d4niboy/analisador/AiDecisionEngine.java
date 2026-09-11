@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -14,9 +13,31 @@ public class AiDecisionEngine {
 
     private static final int MIN_CANDLES = 10;
 
+    /*
+     * Caminho portatil do modelo.
+     *
+     * Usa a mesma pasta do CandleDatasetCollector e do AiTrainer:
+     * <usuario>/Analisador15s/dados_ia
+     *
+     * Pode ser alterado sem modificar o codigo usando:
+     * -Danalisador.dados.dir="D:\\MinhaPasta"
+     */
+    private static final Path PASTA_BASE =
+            Path.of(
+                    System.getProperty(
+                            "analisador.dados.dir",
+                            Path.of(
+                                    System.getProperty("user.home"),
+                                    "Analisador15s"
+                            ).toString()
+                    )
+            );
+
+    private static final Path PASTA_DADOS =
+            PASTA_BASE.resolve("dados_ia");
+
     private static final Path MODELO =
-            Paths.get(
-                    "dados_ia",
+            PASTA_DADOS.resolve(
                     "modelo_ia_10candles.csv"
             );
 

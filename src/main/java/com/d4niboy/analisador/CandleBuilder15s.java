@@ -107,13 +107,7 @@ public class CandleBuilder15s {
     private void fechar() {
 
         Candle candle =
-                new Candle(
-                        inicioAtual,
-                        open,
-                        high,
-                        low,
-                        close
-                );
+                new Candle(inicioAtual, open, high, low, close);
 
         candlesFechados.add(
                 candle

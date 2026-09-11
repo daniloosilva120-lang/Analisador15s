@@ -6,16 +6,42 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 
 public class AiTrainer {
 
+    /*
+     * Caminhos portateis.
+     *
+     * Usa a mesma pasta do CandleDatasetCollector:
+     * <usuario>/Analisador15s/dados_ia
+     *
+     * Pode ser sobrescrita sem alterar o codigo com:
+     * -Danalisador.dados.dir="D:\\MinhaPasta"
+     */
+    private static final Path PASTA_BASE =
+            Path.of(
+                    System.getProperty(
+                            "analisador.dados.dir",
+                            Path.of(
+                                    System.getProperty("user.home"),
+                                    "Analisador15s"
+                            ).toString()
+                    )
+            );
+
+    private static final Path PASTA_DADOS =
+            PASTA_BASE.resolve("dados_ia");
+
     private static final Path DATASET =
-            Paths.get("dados_ia", "candles_janelas_10_indicadores.csv");
+            PASTA_DADOS.resolve(
+                    "candles_janelas_10_indicadores.csv"
+            );
 
     private static final Path MODELO =
-            Paths.get("dados_ia", "modelo_ia_10candles.csv");
+            PASTA_DADOS.resolve(
+                    "modelo_ia_10candles.csv"
+            );
 
     private static final int CANDLES = 10;
     private static final int FEATURES_POR_CANDLE = 7;
@@ -623,3 +649,4 @@ public class AiTrainer {
     ) {
     }
 }
+

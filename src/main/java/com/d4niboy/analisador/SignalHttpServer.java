@@ -13,6 +13,29 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class SignalHttpServer {
 
+    /*
+     * Configuracao portatil do servidor local.
+     *
+     * Por padrao continua usando:
+     * 127.0.0.1:8765
+     *
+     * Pode ser alterado sem mexer no codigo:
+     *
+     * -Danalisador.signal.host=127.0.0.1
+     * -Danalisador.signal.port=8765
+     */
+    private static final String SERVER_HOST =
+            System.getProperty(
+                    "analisador.signal.host",
+                    "127.0.0.1"
+            );
+
+    private static final int SERVER_PORT =
+            Integer.getInteger(
+                    "analisador.signal.port",
+                    8765
+            );
+
     private static volatile String ultimoJsonSinal =
             "{\"status\":\"AGUARDANDO_SINAL\"}";
 
@@ -29,8 +52,8 @@ public class SignalHttpServer {
                         HttpServer server =
                                 HttpServer.create(
                                         new InetSocketAddress(
-                                                "127.0.0.1",
-                                                8765
+                                                SERVER_HOST,
+                                                SERVER_PORT
                                         ),
                                         0
                                 );
@@ -44,11 +67,26 @@ public class SignalHttpServer {
 
                         server.start();
 
+                        System.out.println(
+                                "SIGNAL HTTP: http://"
+                                        + SERVER_HOST
+                                        + ":"
+                                        + SERVER_PORT
+                                        + "/sinal"
+                        );
+
                     } catch (IOException e) {
 
                         System.err.println(
                                 "ERRO: Não foi possível iniciar o servidor HTTP."
                         );
+
+                        if (e.getMessage() != null) {
+                            System.err.println(
+                                    "Detalhes: "
+                                            + e.getMessage()
+                            );
+                        }
                     }
 
                 },
